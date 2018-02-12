@@ -60,6 +60,16 @@ namespace Superluminal
 
 			return tMax >= Mathf.Max(tMin, 0.0f);
 		}
+
+		public Vector3 Center
+		{
+			get { return (min + max) * 0.5f; }
+		}
+
+		public Vector3 Size
+		{
+			get { return (max - min); }
+		}
 	}
 
 }

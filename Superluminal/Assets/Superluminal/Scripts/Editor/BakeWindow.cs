@@ -8,6 +8,8 @@ namespace Superluminal
 {
 	public class BakeWindow : EditorWindow
 	{
+		private bool drawKDTree;
+
 		private Lightbaker baker;
 
 		private void OnEnable()
@@ -21,6 +23,16 @@ namespace Superluminal
 		{
 			EditorGUILayout.BeginHorizontal();
 
+			EditorGUI.BeginChangeCheck();
+			drawKDTree = GUILayout.Toggle(drawKDTree, "Draw KD-tree");
+
+			if (EditorGUI.EndChangeCheck())
+				SceneView.RepaintAll();
+
+			EditorGUILayout.EndHorizontal();
+
+			EditorGUILayout.BeginHorizontal();
+
 			if (GUILayout.Button("Setup"))
 				Setup();
 
@@ -32,22 +44,43 @@ namespace Superluminal
 
 		private void OnSceneGUI(SceneView sceneView)
 		{
-			KDTree tree = baker.Scene.Tree;
+			if (drawKDTree)
+			{
+				KDTree tree = baker.Scene.Tree;
 
+				if (tree.RootNode != null)
+					DrawKDTreeNode(tree, tree.RootNode, tree.Bounds);
+			}
 		}
 
-		private void DrawKDTreeNode(KDTreeNode node, AABB bounds)
+		private void DrawKDTreeNode(KDTree tree, KDTreeNode node, AABB bounds)
 		{
+			Handles.DrawWireCube(bounds.Center, bounds.Size);
 
+			if (!node.IsLeaf)
+			{
+				AABB upperBounds, lowerBounds;
+				KDTree.CalculateBounds(ref bounds, node.SplitAxis, node.SplitPoint, out upperBounds, out lowerBounds);
+
+				KDTreeNode upperNode, lowerNode;
+				tree.GetChildNodes(node, out upperNode, out lowerNode);
+
+				DrawKDTreeNode(tree, upperNode, upperBounds);
+				DrawKDTreeNode(tree, lowerNode, lowerBounds);
+			}
 		}
 
 		private void Setup()
 		{
 			baker.SetupScene();
+
+			if (drawKDTree)
+				SceneView.RepaintAll();
 		}
 
 		private void Bake()
 		{
+			baker.Bake();
 		}
 
 		[MenuItem("Window/Superluminal")]

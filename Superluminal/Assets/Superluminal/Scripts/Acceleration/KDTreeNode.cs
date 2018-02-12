@@ -61,7 +61,7 @@ namespace Superluminal
 
 		public int LowerNodeIdx
 		{
-			get { return LowerNodeIdx; }
+			get { return upperNodeIdx + 1; }
 		}
 
 		public List<Triangle> Elements

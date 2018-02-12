@@ -138,6 +138,11 @@ namespace Superluminal
 		{
 			get { return v2; }
 		}
+
+		public Vector3 Normal
+		{
+			get { return normal; }
+		}
 	}
 
 }
