@@ -5,19 +5,21 @@ using UnityEngine;
 namespace Superluminal
 {
 	[System.Serializable]
-	public class MeshBinding
+	public class BakeTarget
 	{
+		public string guid;
+
 		public MeshRenderer renderer;
 
 		public Mesh originalMesh;
 
 		public Mesh bakedMesh;
 
-		public List<Submesh> submeshes;
+		public List<BakeTargetSubmesh> submeshes;
 	}
 
 	[System.Serializable]
-	public class Submesh
+	public class BakeTargetSubmesh
 	{ 
 		public int idx;
 

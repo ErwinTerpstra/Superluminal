@@ -72,7 +72,7 @@ namespace Superluminal
 
 		private void Setup()
 		{
-			baker.SetupScene();
+			baker.Setup();
 
 			if (drawKDTree)
 				SceneView.RepaintAll();

@@ -7,25 +7,24 @@ namespace Superluminal
 {
 	public class Raytracer
 	{
-		private Scene scene;
+		private BakeContext context;
 
-		public Raytracer(Scene scene)
+		public Raytracer(BakeContext context)
 		{
-			this.scene = scene;
+			this.context = context;
 		}
 
 		public void CalculateShading(ref Ray ray, ref ShadingInfo shadingInfo)
 		{
 			RaycastHit hitInfo;
-			if (!scene.Raycast(ref ray, out hitInfo))
+			if (!context.Raycast(ref ray, out hitInfo))
 			{
 				shadingInfo.color = Color.magenta;
 				return;
 			}
-
-			MeshBinding binding;
+			
 			Submesh submesh;
-			if (!scene.RetrieveTriangleData(hitInfo.element, out binding, out submesh))
+			if (!context.RetrieveTriangleData(hitInfo.element, out submesh))
 			{
 				shadingInfo.color = Color.magenta;
 				Debug.LogError("Could not find submesh for triangle!");
@@ -40,7 +39,7 @@ namespace Superluminal
 			Color radiance = Color.black;
 			Color diffuse = material.GetColor("_Color");
 			
-			foreach (Light light in scene.Lights)
+			foreach (Light light in context.Lights)
 			{
 				if (light.type != LightType.Directional)
 					continue;
@@ -60,7 +59,7 @@ namespace Superluminal
 
 			Ray shadowRay = new Ray(position + normal * 1e-4f, l);
 			RaycastHit shadowHitInfo;
-			if (scene.Raycast(ref shadowRay, out shadowHitInfo))
+			if (context.Raycast(ref shadowRay, out shadowHitInfo))
 				return Color.black;
 
 			return light.color;

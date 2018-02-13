@@ -5,7 +5,7 @@ namespace Superluminal
 {
 	public class BakeData : MonoBehaviour
 	{
-		public MeshBinding[] bindings;
+		public BakeTarget[] targets = new BakeTarget[0];
 	}
 
 }
