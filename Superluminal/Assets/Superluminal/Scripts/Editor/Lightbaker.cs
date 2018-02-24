@@ -18,7 +18,7 @@ namespace Superluminal
 
 		private Raytracer raytracer;
 
-		private Dictionary<string, BakeTarget> bindings;
+		private Dictionary<string, BakeTarget> targets;
 
 		private Dictionary<MeshRenderer, BakeTarget> rendererMap;
 
@@ -28,7 +28,7 @@ namespace Superluminal
 		
 		public Lightbaker()
 		{
-			bindings = new Dictionary<string, BakeTarget>();
+			targets = new Dictionary<string, BakeTarget>();
 			rendererMap = new Dictionary<MeshRenderer, BakeTarget>();
 
 			context = new BakeContext();
@@ -37,7 +37,7 @@ namespace Superluminal
 
 		public void Setup()
 		{
-			bindings.Clear();
+			targets.Clear();
 			rendererMap.Clear();
 
 			SetupBakeData();
@@ -49,8 +49,6 @@ namespace Superluminal
 			List<Submesh> submeshes = new List<Submesh>();
 			
 			CollectMeshes(submeshes);
-
-			lights.Clear();
 			CollectLights(lights);
 
 			context.Setup(submeshes, lights);
@@ -61,9 +59,13 @@ namespace Superluminal
 			Scene scene = EditorSceneManager.GetActiveScene();
 			meshRespository = new MeshRepository(scene);
 
-			foreach (KeyValuePair<string, BakeTarget> pair in bindings)
+			// Iterate through all bake targets
+			foreach (KeyValuePair<string, BakeTarget> pair in targets)
 			{
+				// Bake the new mesh
 				Bake(pair.Value);
+
+				// Store the new baked mesh
 				meshRespository.StoreMesh(pair.Value.bakedMesh, pair.Value.guid);
 			}
 
@@ -72,11 +74,17 @@ namespace Superluminal
 
 		private void Bake(BakeTarget target)
 		{
+			Vector3[] vertices = target.originalMesh.vertices;
+			Vector3[] normals = target.originalMesh.normals;
+			Vector2[] texcoords = target.originalMesh.uv;
+			
+			// Create a new mesh with the same vertex attributes
 			Mesh bakedMesh = new Mesh();
-			bakedMesh.vertices = target.originalMesh.vertices;
-			bakedMesh.uv = target.originalMesh.uv;
-			bakedMesh.normals = target.originalMesh.normals;
+			bakedMesh.vertices = vertices;
+			bakedMesh.normals = normals;
+			bakedMesh.uv = texcoords;
 
+			// Copy submesh indices to the new mesh
 			List<int> indices = new List<int>();
 			for (int submeshIdx = 0; submeshIdx < target.originalMesh.subMeshCount; ++submeshIdx)
 			{
@@ -85,18 +93,28 @@ namespace Superluminal
 				bakedMesh.SetTriangles(indices, submeshIdx);
 			}
 
+			// Bake vertex colors
+			Color[] colors = new Color[target.originalMesh.vertexCount];
+			
+
+			// Store the generated colors
+			bakedMesh.colors = colors;
+
 			target.bakedMesh = bakedMesh;
 		}
 
 		private void SetupBakeData()
 		{
+			// Find if there is already a BakeData object in the scene
 			bakeData = Object.FindObjectOfType<BakeData>();
 
 			if (bakeData == null)
 			{
+				// If there's not, create one
 				GameObject bakeDataObject = new GameObject("BakeData");
 				bakeData = bakeDataObject.AddComponent<BakeData>();
 
+				// Make sure the new object is saved
 				EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 			}
 
@@ -104,15 +122,19 @@ namespace Superluminal
 
 		private void StoreBakeData()
 		{
-			bakeData.targets = bindings.Values.ToArray();
+			// Store the list of baked meshes in the bake data
+			bakeData.targets = targets.Values.ToArray();
 
+			// Write the meshes to disk
 			meshRespository.Flush();
+
+			// Save the scene
 			EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 		}
 
 		private void StoreTarget(BakeTarget target)
 		{
-			bindings.Add(target.guid, target);
+			targets.Add(target.guid, target);
 			rendererMap.Add(target.renderer, target);
 		}
 
@@ -156,7 +178,7 @@ namespace Superluminal
 						});
 					}
 
-					// Check if the materials' shader is supported
+					// If the material has a supported shader, add it as a mesh that is part of the reflection.
 					if (material.shader.name == "Superluminal/VertexBaked" || material.shader.name == "Standard")
 					{
 						submeshes.Add(new Submesh()

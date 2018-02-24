@@ -14,6 +14,7 @@ namespace Superluminal
 			this.context = context;
 		}
 
+		
 		public void CalculateShading(ref Ray ray, ref ShadingInfo shadingInfo)
 		{
 			RaycastHit hitInfo;
@@ -32,6 +33,11 @@ namespace Superluminal
 			}
 			
 			shadingInfo.color = SampleDirectLight(hitInfo.position, hitInfo.element.Normal, submesh.material);
+		}
+
+		public Color Sample(Vector3 position, Vector3 normal, Material material)
+		{
+			return SampleDirectLight(position, normal, material);
 		}
 
 		public Color SampleDirectLight(Vector3 position, Vector3 normal, Material material)
