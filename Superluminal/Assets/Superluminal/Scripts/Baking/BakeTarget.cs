@@ -15,9 +15,10 @@ namespace Superluminal
 
 		public Mesh bakedMesh;
 
-		public GameObject preview;
-
 		public List<BakeTargetSubmesh> submeshes;
+
+		[System.NonSerialized]
+		public GameObject preview;
 	}
 
 	[System.Serializable]

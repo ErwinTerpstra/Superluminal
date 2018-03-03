@@ -378,7 +378,6 @@ MonoBehaviour:
     renderer: {fileID: 218513304}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: 852f1011b1a32714bb1cdd3863ee74d2, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 283229a757be783499ba38d34494bea8, type: 2}
@@ -386,7 +385,6 @@ MonoBehaviour:
     renderer: {fileID: 448039001}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: 6b272766ddfcae1468be91a3f09392c3, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 9bc527a822b61e845b6753edafde38c7, type: 2}
@@ -394,7 +392,6 @@ MonoBehaviour:
     renderer: {fileID: 1014271340}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: 94784a7b8d106df42974713e10fe04ac, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 9bc527a822b61e845b6753edafde38c7, type: 2}
@@ -402,7 +399,6 @@ MonoBehaviour:
     renderer: {fileID: 1119845440}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: f07abaec9542de749ab322af64200438, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 283229a757be783499ba38d34494bea8, type: 2}
@@ -410,7 +406,6 @@ MonoBehaviour:
     renderer: {fileID: 1158035830}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: c7668609a41d78c40afa1ed7aae14de1, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 9bc527a822b61e845b6753edafde38c7, type: 2}
@@ -418,7 +413,6 @@ MonoBehaviour:
     renderer: {fileID: 1236990834}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: 253dab4a5dd94284194eab902a5fe08d, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 6d77e012727be7d4e838a7100442846e, type: 2}
@@ -426,7 +420,6 @@ MonoBehaviour:
     renderer: {fileID: 1276861433}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: fa8e2d2cd7a24144e95e7928a90225dd, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 6d77e012727be7d4e838a7100442846e, type: 2}
@@ -434,7 +427,6 @@ MonoBehaviour:
     renderer: {fileID: 1427040733}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: d953ebd829803c2459d14f05efe1e553, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 283229a757be783499ba38d34494bea8, type: 2}
@@ -442,7 +434,6 @@ MonoBehaviour:
     renderer: {fileID: 1611424556}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: bea11d6f6cba9ed48a8d5792840e7741, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 9bc527a822b61e845b6753edafde38c7, type: 2}
@@ -450,7 +441,6 @@ MonoBehaviour:
     renderer: {fileID: 1727266571}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: 85fde6acd124cd740b945448592930e9, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 9bc527a822b61e845b6753edafde38c7, type: 2}
@@ -458,7 +448,6 @@ MonoBehaviour:
     renderer: {fileID: 1768160668}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: 53759e770c8340c4f82119e3c178ffe6, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 481b09590fd775a47ae0c2ae17dfe617, type: 2}
@@ -466,7 +455,6 @@ MonoBehaviour:
     renderer: {fileID: 1851425332}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: 2b52b235ed189b8479de42c18619d0e0, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 6d77e012727be7d4e838a7100442846e, type: 2}
@@ -474,7 +462,6 @@ MonoBehaviour:
     renderer: {fileID: 1853437908}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: 86f9910f66c472c43980b331b179504e, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 481b09590fd775a47ae0c2ae17dfe617, type: 2}
@@ -482,7 +469,6 @@ MonoBehaviour:
     renderer: {fileID: 1971097800}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: f4d8fa5c5f182654e8383da1eaaced3c, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 481b09590fd775a47ae0c2ae17dfe617, type: 2}
@@ -490,7 +476,6 @@ MonoBehaviour:
     renderer: {fileID: 2022226159}
     originalMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: bd9333742f7f1a145be43aa8ade32b48, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 481b09590fd775a47ae0c2ae17dfe617, type: 2}
@@ -498,7 +483,6 @@ MonoBehaviour:
     renderer: {fileID: 1182301375}
     originalMesh: {fileID: 10209, guid: 0000000000000000e000000000000000, type: 0}
     bakedMesh: {fileID: 4300000, guid: 4b85ff7dfe0e10a4e9093453c5936691, type: 2}
-    preview: {fileID: 0}
     submeshes:
     - idx: 0
       material: {fileID: 2100000, guid: 330a2d801ab4b43439785f8af6c3eb2c, type: 2}

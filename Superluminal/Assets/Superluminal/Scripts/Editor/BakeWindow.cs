@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 
 namespace Superluminal
 {
@@ -14,13 +16,33 @@ namespace Superluminal
 
 		private void OnEnable()
 		{
-			baker = new Lightbaker();
+			Scene activeScene = EditorSceneManager.GetActiveScene();
+
+			if (!string.IsNullOrEmpty(activeScene.name))
+				baker = new Lightbaker(activeScene);
 
 			SceneView.onSceneGUIDelegate += OnSceneGUI;
+
+			EditorSceneManager.newSceneCreated += OnNewSceneCreated;
+			EditorSceneManager.sceneOpened += OnSceneOpened;
+			EditorSceneManager.sceneClosed += OnSceneClosed;
+		}
+
+		private void OnDisable()
+		{
+			EditorSceneManager.newSceneCreated -= OnNewSceneCreated;
+			EditorSceneManager.sceneOpened -= OnSceneOpened;
+			EditorSceneManager.sceneClosed -= OnSceneClosed;
 		}
 
 		private void OnGUI()
 		{
+			if (baker == null)
+			{
+				EditorGUILayout.LabelField("Lightbaking can only be performed in saved scenes.");
+				return;
+			}
+
 			EditorGUILayout.BeginHorizontal();
 
 			EditorGUI.BeginChangeCheck();
@@ -46,7 +68,7 @@ namespace Superluminal
 			EditorGUILayout.EndHorizontal();
 
 			EditorGUILayout.BeginHorizontal();
-			
+
 			if (GUILayout.Button("Bake"))
 				Bake();
 
@@ -93,7 +115,7 @@ namespace Superluminal
 				DrawKDTreeNode(tree, lowerNode, lowerBounds);
 			}
 		}
-	
+
 
 		private void Bake()
 		{
@@ -103,10 +125,43 @@ namespace Superluminal
 				SceneView.RepaintAll();
 		}
 
+
+		private void OnNewSceneCreated(Scene scene, NewSceneSetup setup, NewSceneMode mode)
+		{
+			if (baker != null)
+			{
+				baker.Destroy();
+				baker = null;
+
+				Repaint();
+			}
+		}
+
+		private void OnSceneOpened(Scene scene, OpenSceneMode mode)
+		{
+			if (!string.IsNullOrEmpty(scene.name))
+			{
+				baker = new Lightbaker(scene);
+				Repaint();
+			}
+		}
+
+		private void OnSceneClosed(Scene scene)
+		{
+			if (baker != null && scene == baker.Scene)
+			{
+				baker.Destroy();
+				baker = null;
+
+				Repaint();
+			}
+		}
+
 		[MenuItem("Window/Superluminal")]
 		public static void OpenWindow()
 		{
-			EditorWindow.GetWindow(typeof(BakeWindow));
+			EditorWindow window = EditorWindow.GetWindow(typeof(BakeWindow));
+			window.titleContent = new GUIContent("Superluminal");
 		}
 
 	}

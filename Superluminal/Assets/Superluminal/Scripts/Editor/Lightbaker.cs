@@ -26,10 +26,14 @@ namespace Superluminal
 
 		private BakeData bakeData;
 
+		private Scene scene;
+
 		private GameObject previewRoot;
 
-		public Lightbaker()
+		public Lightbaker(Scene scene)
 		{
+			this.scene = scene;
+
 			targets = new Dictionary<string, BakeTarget>();
 			rendererMap = new Dictionary<MeshRenderer, BakeTarget>();
 
@@ -40,13 +44,19 @@ namespace Superluminal
 			bakeData = Object.FindObjectOfType<BakeData>();
 
 			ReadBakeData();
+			DisablePreview();
+		}
+
+		public void Destroy()
+		{
+			if (previewRoot != null)
+				Object.DestroyImmediate(previewRoot);
 		}
 
 		public void Bake()
 		{
 			PreBake();
-
-			Scene scene = EditorSceneManager.GetActiveScene();
+			
 			meshRespository = new MeshRepository(scene);
 
 			// Iterate through all bake targets
@@ -160,7 +170,7 @@ namespace Superluminal
 			meshRespository.Flush();
 
 			// Make sure the scene will be saved
-			EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+			EditorSceneManager.MarkSceneDirty(scene);
 		}
 
 		private void StoreTarget(BakeTarget target)
@@ -174,7 +184,7 @@ namespace Superluminal
 			if (previewRoot == null)
 			{
 				previewRoot = new GameObject("SuperluminalPreview");
-				previewRoot.hideFlags = HideFlags.DontSaveInEditor;
+				previewRoot.hideFlags = HideFlags.DontSave;
 			}
 
 			foreach (var pair in targets)
@@ -189,7 +199,7 @@ namespace Superluminal
 				if (pair.Value.preview == null)
 				{
 					preview = new GameObject(targetRenderer.gameObject.name);
-					preview.hideFlags = HideFlags.DontSaveInEditor;
+					preview.hideFlags = HideFlags.DontSave;
 					preview.transform.SetParent(previewRoot.transform, false);
 
 					meshFilter = preview.AddComponent<MeshFilter>();
@@ -327,6 +337,11 @@ namespace Superluminal
 			}
 		}
 
+		public Scene Scene
+		{
+			get { return scene; }
+		}
+		
 		public BakeContext Context
 		{
 			get { return context; }
