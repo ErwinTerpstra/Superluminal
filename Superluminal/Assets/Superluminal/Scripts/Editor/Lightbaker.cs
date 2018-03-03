@@ -25,7 +25,9 @@ namespace Superluminal
 		private MeshRepository meshRespository;
 
 		private BakeData bakeData;
-		
+
+		private GameObject previewRoot;
+
 		public Lightbaker()
 		{
 			targets = new Dictionary<string, BakeTarget>();
@@ -33,29 +35,17 @@ namespace Superluminal
 
 			context = new BakeContext();
 			raytracer = new Raytracer(context);
-		}
 
-		public void Setup()
-		{
-			targets.Clear();
-			rendererMap.Clear();
+			// Find if there is already a BakeData object in the scene
+			bakeData = Object.FindObjectOfType<BakeData>();
 
-			SetupBakeData();
-
-			foreach (BakeTarget target in bakeData.targets)
-				StoreTarget(target);
-
-			List<Light> lights = new List<Light>();
-			List<Submesh> submeshes = new List<Submesh>();
-			
-			CollectMeshes(submeshes);
-			CollectLights(lights);
-
-			context.Setup(submeshes, lights);
+			ReadBakeData();
 		}
 
 		public void Bake()
 		{
+			PreBake();
+
 			Scene scene = EditorSceneManager.GetActiveScene();
 			meshRespository = new MeshRepository(scene);
 
@@ -70,6 +60,35 @@ namespace Superluminal
 			}
 
 			StoreBakeData();
+			UpdatePreview();
+		}
+
+		public void EnablePreview()
+		{
+			if (previewRoot != null)
+				previewRoot.gameObject.SetActive(true);
+
+			UpdatePreview();
+		}
+
+		public void DisablePreview()
+		{
+			if (previewRoot != null)
+				previewRoot.gameObject.SetActive(false);
+
+			foreach (var pair in targets)
+				pair.Value.renderer.enabled = true;
+		}
+
+		private void PreBake()
+		{
+			List<Light> lights = new List<Light>();
+			List<Submesh> submeshes = new List<Submesh>();
+
+			CollectMeshes(submeshes);
+			CollectLights(lights);
+
+			context.Setup(submeshes, lights);
 		}
 
 		private void Bake(BakeTarget target)
@@ -95,6 +114,15 @@ namespace Superluminal
 
 			// Bake vertex colors
 			Color[] colors = new Color[target.originalMesh.vertexCount];
+
+			for (int vertexIdx = 0; vertexIdx < vertices.Length; ++vertexIdx)
+			{
+				Vector3 position = vertices[vertexIdx];
+				Vector3 normal = normals[vertexIdx];
+
+				Color irradiance = raytracer.SampleDirectLight(position, normal);
+				colors[vertexIdx] = irradiance;
+			}
 			
 
 			// Store the generated colors
@@ -103,32 +131,35 @@ namespace Superluminal
 			target.bakedMesh = bakedMesh;
 		}
 
-		private void SetupBakeData()
+		private void ReadBakeData()
 		{
-			// Find if there is already a BakeData object in the scene
-			bakeData = Object.FindObjectOfType<BakeData>();
+			targets.Clear();
+			rendererMap.Clear();
 
+			if (bakeData != null)
+			{
+				foreach (BakeTarget target in bakeData.targets)
+					StoreTarget(target);
+			}
+		}
+
+		private void StoreBakeData()
+		{
+			// Check if we already have a BakeData object
 			if (bakeData == null)
 			{
 				// If there's not, create one
 				GameObject bakeDataObject = new GameObject("BakeData");
 				bakeData = bakeDataObject.AddComponent<BakeData>();
-
-				// Make sure the new object is saved
-				EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 			}
 
-		}
-
-		private void StoreBakeData()
-		{
 			// Store the list of baked meshes in the bake data
 			bakeData.targets = targets.Values.ToArray();
 
 			// Write the meshes to disk
 			meshRespository.Flush();
 
-			// Save the scene
+			// Make sure the scene will be saved
 			EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 		}
 
@@ -136,6 +167,54 @@ namespace Superluminal
 		{
 			targets.Add(target.guid, target);
 			rendererMap.Add(target.renderer, target);
+		}
+
+		private void UpdatePreview()
+		{
+			if (previewRoot == null)
+			{
+				previewRoot = new GameObject("SuperluminalPreview");
+				previewRoot.hideFlags = HideFlags.DontSaveInEditor;
+			}
+
+			foreach (var pair in targets)
+			{
+				MeshRenderer targetRenderer = pair.Value.renderer;
+
+				GameObject preview;
+
+				MeshFilter meshFilter;
+				MeshRenderer meshRenderer;
+
+				if (pair.Value.preview == null)
+				{
+					preview = new GameObject(targetRenderer.gameObject.name);
+					preview.hideFlags = HideFlags.DontSaveInEditor;
+					preview.transform.SetParent(previewRoot.transform, false);
+
+					meshFilter = preview.AddComponent<MeshFilter>();
+					meshRenderer = preview.AddComponent<MeshRenderer>();
+
+					pair.Value.preview = preview;
+				}
+				else
+				{
+					preview = pair.Value.preview;
+
+					meshFilter = preview.GetComponent<MeshFilter>();
+					meshRenderer = preview.GetComponent<MeshRenderer>();
+				}
+
+				meshFilter.sharedMesh = pair.Value.bakedMesh;
+				meshRenderer.sharedMaterials = targetRenderer.sharedMaterials;
+
+				// Copy the transform of the preview object
+				preview.transform.position = targetRenderer.transform.position;
+				preview.transform.rotation = targetRenderer.transform.rotation;
+				preview.transform.localScale = targetRenderer.transform.lossyScale;
+				
+				targetRenderer.enabled = false;
+			}
 		}
 
 
@@ -202,13 +281,14 @@ namespace Superluminal
 					BakeTarget target;
 					if (!rendererMap.TryGetValue(renderer, out target))
 					{
-						// Create a new bae target with all eligable submeshes
+						// Create a new bake target with all eligable submeshes
 						target = new BakeTarget()
 						{
 							guid = GUID.Generate().ToString(),
 							renderer = renderer,
 							originalMesh = mesh,
 							bakedMesh = null,
+							preview = null,
 
 							submeshes = targetSubmeshes,
 						};
@@ -247,9 +327,24 @@ namespace Superluminal
 			}
 		}
 
-		public BakeContext Scene
+		public BakeContext Context
 		{
 			get { return context; }
+		}
+
+		public bool HasBakeData
+		{
+			get { return bakeData != null && bakeData.targets.Length > 0; }
+		}
+
+		public int BakeTargetCount
+		{
+			get { return bakeData.targets.Length; }
+		}
+
+		public bool PreviewEnabled
+		{
+			get { return previewRoot != null && previewRoot.activeSelf; }
 		}
 	}
 }

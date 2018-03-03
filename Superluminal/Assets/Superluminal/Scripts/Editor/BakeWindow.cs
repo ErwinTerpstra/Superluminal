@@ -30,14 +30,38 @@ namespace Superluminal
 				SceneView.RepaintAll();
 
 			EditorGUILayout.EndHorizontal();
+			EditorGUILayout.BeginHorizontal();
+
+			EditorGUI.BeginChangeCheck();
+			bool previewEnabled = GUILayout.Toggle(baker.PreviewEnabled, "Preview baked objects");
+
+			if (EditorGUI.EndChangeCheck())
+			{
+				if (previewEnabled)
+					baker.EnablePreview();
+				else
+					baker.DisablePreview();
+			}
+
+			EditorGUILayout.EndHorizontal();
+
+			EditorGUILayout.BeginHorizontal();
+			
+			if (GUILayout.Button("Bake"))
+				Bake();
+
+			EditorGUILayout.EndHorizontal();
 
 			EditorGUILayout.BeginHorizontal();
 
-			if (GUILayout.Button("Setup"))
-				Setup();
-
-			if (GUILayout.Button("Bake"))
-				Bake();
+			if (baker.HasBakeData)
+			{
+				EditorGUILayout.LabelField("Baked meshes", baker.BakeTargetCount.ToString());
+			}
+			else
+			{
+				EditorGUILayout.LabelField("No bake data yet");
+			}
 
 			EditorGUILayout.EndHorizontal();
 		}
@@ -46,7 +70,7 @@ namespace Superluminal
 		{
 			if (drawKDTree)
 			{
-				KDTree tree = baker.Scene.Tree;
+				KDTree tree = baker.Context.Tree;
 
 				if (tree.RootNode != null)
 					DrawKDTreeNode(tree, tree.RootNode, tree.Bounds);
@@ -69,18 +93,14 @@ namespace Superluminal
 				DrawKDTreeNode(tree, lowerNode, lowerBounds);
 			}
 		}
-
-		private void Setup()
-		{
-			baker.Setup();
-
-			if (drawKDTree)
-				SceneView.RepaintAll();
-		}
+	
 
 		private void Bake()
 		{
 			baker.Bake();
+
+			if (drawKDTree)
+				SceneView.RepaintAll();
 		}
 
 		[MenuItem("Window/Superluminal")]

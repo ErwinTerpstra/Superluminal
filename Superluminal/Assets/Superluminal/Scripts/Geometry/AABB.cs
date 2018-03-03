@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -24,13 +24,13 @@ namespace Superluminal
 		/// <param name="point"></param>
 		public void Encapsulate(Vector3 point)
 		{
-			min.x = Mathf.Min(min.x, point.x);
-			min.y = Mathf.Min(min.y, point.y);
-			min.z = Mathf.Min(min.z, point.z);
+			min.x = Math.Min(min.x, point.x);
+			min.y = Math.Min(min.y, point.y);
+			min.z = Math.Min(min.z, point.z);
 
-			max.x = Mathf.Max(max.x, point.x);
-			max.y = Mathf.Max(max.y, point.y);
-			max.z = Mathf.Max(max.z, point.z);
+			max.x = Math.Max(max.x, point.x);
+			max.y = Math.Max(max.y, point.y);
+			max.z = Math.Max(max.z, point.z);
 		}
 
 		/// <summary>
@@ -46,19 +46,19 @@ namespace Superluminal
 			float cMin = (min.x - ray.Origin.x) * ray.InvDirection.x;
 			float cMax = (max.x - ray.Origin.x) * ray.InvDirection.x;
 
-			tMin = Mathf.Min(cMin, cMax);
-			tMax = Mathf.Min(cMin, cMax);
+			tMin = Math.Min(cMin, cMax);
+			tMax = Math.Max(cMin, cMax);
 
 			for (int axis = 1; axis < 3; ++axis)
 			{
 				cMin = (min[axis] - ray.Origin[axis]) * ray.InvDirection[axis];
 				cMax = (max[axis] - ray.Origin[axis]) * ray.InvDirection[axis];
 				
-				tMin = Mathf.Max(tMin, Mathf.Min(cMin, cMax));
-				tMax = Mathf.Min(tMax, Mathf.Max(cMin, cMax));
+				tMin = Math.Max(tMin, Math.Min(cMin, cMax));
+				tMax = Math.Min(tMax, Math.Max(cMin, cMax));
 			}
 
-			return tMax >= Mathf.Max(tMin, 0.0f);
+			return tMax >= Math.Max(tMin, 0.0f);
 		}
 
 		public Vector3 Center

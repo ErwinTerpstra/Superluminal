@@ -31,19 +31,21 @@ namespace Superluminal
 				Debug.LogError("Could not find submesh for triangle!");
 				return;
 			}
-			
-			shadingInfo.color = SampleDirectLight(hitInfo.position, hitInfo.element.Normal, submesh.material);
+
+			Color diffuse = submesh.material.GetColor("_Color");
+			Color radiance = SampleDirectLight(hitInfo.position, hitInfo.element.Normal);
+
+			shadingInfo.color = radiance * diffuse;
 		}
 
 		public Color Sample(Vector3 position, Vector3 normal, Material material)
 		{
-			return SampleDirectLight(position, normal, material);
+			return SampleDirectLight(position, normal);
 		}
 
-		public Color SampleDirectLight(Vector3 position, Vector3 normal, Material material)
+		public Color SampleDirectLight(Vector3 position, Vector3 normal)
 		{
-			Color radiance = Color.black;
-			Color diffuse = material.GetColor("_Color");
+			Color irradiance = Color.black;
 			
 			foreach (Light light in context.Lights)
 			{
@@ -52,11 +54,11 @@ namespace Superluminal
 
 				float NdotL = Vector3.Dot(normal, -light.transform.forward);
 
-				Color irradiance = SampleLight(position, normal, light);
-				radiance += diffuse * irradiance * NdotL;
+				Color radiance = SampleLight(position, normal, light);
+				irradiance += radiance * NdotL;
 			}
 
-			return radiance;
+			return irradiance;
 		}
 
 		public Color SampleLight(Vector3 position, Vector3 normal, Light light)

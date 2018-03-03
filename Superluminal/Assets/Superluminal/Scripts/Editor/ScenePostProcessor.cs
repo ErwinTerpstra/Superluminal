@@ -23,6 +23,8 @@ namespace Superluminal
 
 				MeshFilter meshFilter = binding.renderer.GetComponent<MeshFilter>();
 				meshFilter.sharedMesh = binding.bakedMesh;
+
+				binding.renderer.enabled = true;
 			}
 
 			
