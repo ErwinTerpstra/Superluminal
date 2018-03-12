@@ -11,51 +11,40 @@ namespace Superluminal
 	/// <summary>
 	/// Manages baked meshes for a single scene.
 	/// </summary>
-	public class MeshRepository
+	public class MeshRepository : ScriptableObject
 	{
-		private const string MESH_DIRECTORY = "BakedMeshes";
-
-		private Scene scene;
-
-		private Dictionary<string, Mesh> meshes;
-
-		private string meshDirectory;
-
-		public MeshRepository(Scene scene)
+		private const string ASSET_NAME = "MeshRepository.asset";
+				
+		public static MeshRepository Create(Scene scene)
 		{
-			this.scene = scene;
-
 			string sceneDirectory = Path.GetDirectoryName(scene.path);
-			meshDirectory = sceneDirectory + Path.DirectorySeparatorChar + scene.name + Path.DirectorySeparatorChar + MESH_DIRECTORY;
+			string assetDirectory = sceneDirectory + Path.DirectorySeparatorChar + scene.name;
 
-			if (!Directory.Exists(Application.dataPath + meshDirectory))
+			if (!Directory.Exists(Application.dataPath + assetDirectory))
 			{
-				Directory.CreateDirectory(meshDirectory);
+				Directory.CreateDirectory(assetDirectory);
 				AssetDatabase.Refresh();
 			}
 
-			meshes = new Dictionary<string, Mesh>();
+			string assetPath = assetDirectory + Path.DirectorySeparatorChar + ASSET_NAME;
 
-			LoadAll();
+			//MeshRepository repository = AssetDatabase.LoadAssetAtPath<MeshRepository>(assetPath);
+
+			MeshRepository repository = CreateInstance<MeshRepository>();
+
+			AssetDatabase.CreateAsset(repository, assetPath);
+			AssetDatabase.SaveAssets();
+
+			return repository;
 		}
-
-		private void LoadAll()
-		{
-			string[] guids = AssetDatabase.FindAssets("t:Mesh", new string[] { meshDirectory });
-			foreach (string guid in guids)
-			{
-				string path = AssetDatabase.GUIDToAssetPath(guid);
-				Mesh mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
-
-				meshes.Add(guid, mesh);
-			}
-		}
-
+		
 		public void StoreMesh(Mesh mesh, string guid)
 		{
-			AssetDatabase.CreateAsset(mesh, meshDirectory + Path.DirectorySeparatorChar + guid + ".asset");
+			//AssetDatabase.CreateAsset(mesh, assetDirectory + Path.DirectorySeparatorChar + guid + ".asset");
 
-			meshes[guid] = mesh;
+			mesh.name = guid;
+
+			AssetDatabase.AddObjectToAsset(mesh, this);
 		}
 
 		public void Flush()

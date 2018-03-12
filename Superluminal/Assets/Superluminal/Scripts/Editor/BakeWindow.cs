@@ -12,6 +12,8 @@ namespace Superluminal
 	{
 		private bool drawKDTree;
 
+		private bool previewEnabled;
+
 		private Lightbaker baker;
 
 		private void OnEnable()
@@ -23,16 +25,20 @@ namespace Superluminal
 
 			SceneView.onSceneGUIDelegate += OnSceneGUI;
 
-			EditorSceneManager.newSceneCreated += OnNewSceneCreated;
+			Camera.onPostRender += OnCameraPostRender;
+
 			EditorSceneManager.sceneOpened += OnSceneOpened;
-			EditorSceneManager.sceneClosed += OnSceneClosed;
+			EditorSceneManager.newSceneCreated += OnNewSceneCreated;
 		}
 
 		private void OnDisable()
 		{
-			EditorSceneManager.newSceneCreated -= OnNewSceneCreated;
+			SceneView.onSceneGUIDelegate -= OnSceneGUI;
+
+			Camera.onPostRender -= OnCameraPostRender;
+
 			EditorSceneManager.sceneOpened -= OnSceneOpened;
-			EditorSceneManager.sceneClosed -= OnSceneClosed;
+			EditorSceneManager.newSceneCreated -= OnNewSceneCreated;
 		}
 
 		private void OnGUI()
@@ -52,20 +58,30 @@ namespace Superluminal
 				SceneView.RepaintAll();
 
 			EditorGUILayout.EndHorizontal();
-			EditorGUILayout.BeginHorizontal();
 
-			EditorGUI.BeginChangeCheck();
-			bool previewEnabled = GUILayout.Toggle(baker.PreviewEnabled, "Preview baked objects");
-
-			if (EditorGUI.EndChangeCheck())
 			{
-				if (previewEnabled)
-					baker.EnablePreview();
-				else
-					baker.DisablePreview();
-			}
+				GUI.enabled = baker.HasBakeData;
 
-			EditorGUILayout.EndHorizontal();
+				EditorGUILayout.BeginHorizontal();
+
+				EditorGUI.BeginChangeCheck();
+
+				bool shouldEnablePreview = GUILayout.Toggle(previewEnabled, "Preview baked meshes");
+
+				if (EditorGUI.EndChangeCheck())
+				{
+					if (shouldEnablePreview)
+						EnablePreview();
+					else
+						DisablePreview();
+
+					SceneView.RepaintAll();
+				}
+
+				EditorGUILayout.EndHorizontal();
+
+				GUI.enabled = true;
+			}
 
 			EditorGUILayout.BeginHorizontal();
 
@@ -75,10 +91,14 @@ namespace Superluminal
 			EditorGUILayout.EndHorizontal();
 
 			EditorGUILayout.BeginHorizontal();
+			EditorGUILayout.LabelField("Active scene", baker.Scene.name);
+			EditorGUILayout.EndHorizontal();
+
+			EditorGUILayout.BeginHorizontal();
 
 			if (baker.HasBakeData)
 			{
-				EditorGUILayout.LabelField("Baked meshes", baker.BakeTargetCount.ToString());
+				EditorGUILayout.LabelField("Baked meshes", baker.BakeTargets.Length.ToString());
 			}
 			else
 			{
@@ -88,15 +108,29 @@ namespace Superluminal
 			EditorGUILayout.EndHorizontal();
 		}
 
-		private void OnSceneGUI(SceneView sceneView)
+		private void EnablePreview()
 		{
-			if (drawKDTree)
-			{
-				KDTree tree = baker.Context.Tree;
+			foreach (BakeTarget target in baker.BakeTargets)
+				target.renderer.enabled = false;
 
-				if (tree.RootNode != null)
-					DrawKDTreeNode(tree, tree.RootNode, tree.Bounds);
-			}
+			previewEnabled = true;
+		}
+
+		private void DisablePreview()
+		{
+			foreach (BakeTarget target in baker.BakeTargets)
+				target.renderer.enabled = true;
+
+			previewEnabled = false;
+		}
+
+
+		private void Bake()
+		{
+			baker.Bake();
+
+			if (drawKDTree)
+				SceneView.RepaintAll();
 		}
 
 		private void DrawKDTreeNode(KDTree tree, KDTreeNode node, AABB bounds)
@@ -116,25 +150,41 @@ namespace Superluminal
 			}
 		}
 
-
-		private void Bake()
+		private void DrawPreview(Camera camera)
 		{
-			baker.Bake();
+			foreach (BakeTarget target in baker.BakeTargets)
+			{
+				if (target.bakedMesh == null || target.renderer == null)
+					continue;
 
-			if (drawKDTree)
-				SceneView.RepaintAll();
+				foreach (BakeTargetSubmesh submesh in target.submeshes)
+				{
+					//Graphics.DrawMesh(target.bakedMesh, target.renderer.transform.localToWorldMatrix, submesh.material, 0, camera, submesh.idx);
+
+					for (int passIdx = 0; passIdx < submesh.material.passCount; ++passIdx)
+					{
+						submesh.material.SetPass(passIdx);
+						Graphics.DrawMeshNow(target.bakedMesh, target.renderer.transform.localToWorldMatrix, submesh.idx);
+					}
+				}
+			}
 		}
 
-
-		private void OnNewSceneCreated(Scene scene, NewSceneSetup setup, NewSceneMode mode)
+		private void OnSceneGUI(SceneView sceneView)
 		{
-			if (baker != null)
+			if (drawKDTree)
 			{
-				baker.Destroy();
-				baker = null;
+				KDTree tree = baker.Context.Tree;
 
-				Repaint();
+				if (tree.RootNode != null)
+					DrawKDTreeNode(tree, tree.RootNode, tree.Bounds);
 			}
+		}
+
+		private void OnCameraPostRender(Camera camera)
+		{
+			if (baker != null && baker.HasBakeData && previewEnabled)
+				DrawPreview(camera);
 		}
 
 		private void OnSceneOpened(Scene scene, OpenSceneMode mode)
@@ -142,20 +192,20 @@ namespace Superluminal
 			if (!string.IsNullOrEmpty(scene.name))
 			{
 				baker = new Lightbaker(scene);
+
+				if (baker.HasBakeData)
+					DisablePreview();
+
 				Repaint();
 			}
 		}
 
-		private void OnSceneClosed(Scene scene)
+		private void OnNewSceneCreated(Scene scene, NewSceneSetup setup, NewSceneMode mode)
 		{
-			if (baker != null && scene == baker.Scene)
-			{
-				baker.Destroy();
+			if (mode == NewSceneMode.Single)
 				baker = null;
-
-				Repaint();
-			}
 		}
+
 
 		[MenuItem("Window/Superluminal")]
 		public static void OpenWindow()

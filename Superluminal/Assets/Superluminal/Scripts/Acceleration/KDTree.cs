@@ -17,8 +17,6 @@ namespace Superluminal
 
 		private List<KDTreeNode> nodes;
 
-		private KDTreeNode rootNode;
-
 		public KDTree()
 		{
 			nodes = new List<KDTreeNode>();
@@ -31,7 +29,6 @@ namespace Superluminal
 		public void Clear()
 		{
 			nodes.Clear();
-			rootNode = null;
 		}
 
 		/// <summary>
@@ -54,8 +51,8 @@ namespace Superluminal
 			}
 
 			// Create the root node and recursively split it as long as neccesary
-			CreateNode(ref bounds, elements, 0);
-			rootNode = nodes[0];
+			nodes.Add(null);
+			nodes[0] = CreateNode(ref bounds, elements, 0);
 		}
 
 		/// <summary>
@@ -64,24 +61,18 @@ namespace Superluminal
 		/// <param name="bounds"></param>
 		/// <param name="elements"></param>
 		/// <param name="depth"></param>
-		private void CreateNode(ref AABB bounds, List<Triangle> elements, int depth)
+		private KDTreeNode CreateNode(ref AABB bounds, List<Triangle> elements, int depth)
 		{
 			// If we are at the maximum tree depth, this will always be a leaf node
 			if (depth >= maxDepth)
-			{
-				nodes.Add(new KDTreeNode(elements));
-				return;
-			}
+				return new KDTreeNode(elements);
 
 			/// Attempt to find the most optimal split point
 			int splitAxis = depth % 3;
 			float splitPoint;
+
 			if (!FindSplitPoint(elements, splitAxis, ref bounds, out splitPoint))
-			{
-				// If the splitting algorithm deems the node unfit to be split, create a leaf node
-				nodes.Add(new KDTreeNode(elements));
-				return;
-			}
+				return new KDTreeNode(elements); // If the splitting algorithm deems the node unfit to be split, create a leaf node
 
 			List<Triangle> upperElements = new List<Triangle>();
 			List<Triangle> lowerElements = new List<Triangle>();
@@ -99,15 +90,20 @@ namespace Superluminal
 			}
 
 			// Create an internal node
-			KDTreeNode node = new KDTreeNode(splitAxis, splitPoint, nodes.Count + 1);
-			nodes.Add(node);
+			KDTreeNode node = new KDTreeNode(splitAxis, splitPoint, nodes.Count);
+
+			// Reserve space for child nodes
+			nodes.Add(null);
+			nodes.Add(null);
 
 			// Create the child nodes
 			AABB upperBounds, lowerBounds;
 			CalculateBounds(ref bounds, splitAxis, splitPoint, out upperBounds, out lowerBounds);
 
-			CreateNode(ref upperBounds, upperElements, depth + 1);
-			CreateNode(ref lowerBounds, lowerElements, depth + 1);
+			nodes[node.UpperNodeIdx] = CreateNode(ref upperBounds, upperElements, depth + 1);
+			nodes[node.LowerNodeIdx] = CreateNode(ref lowerBounds, lowerElements, depth + 1);
+
+			return node;
 		}
 
 		/// <summary>
@@ -120,22 +116,46 @@ namespace Superluminal
 		public bool IntersectRay(ref Ray ray, ref RaycastHit hitInfo, float maxDistance = float.MaxValue)
 		{
 			float tMax, tMin;
-			if (!bounds.IntersectRay(ref ray, out tMax, out tMin))
+			if (!bounds.IntersectRay(ref ray, out tMin, out tMax))
 				return false;
-
+			
 			if (tMin > maxDistance)
 				return false;
 
 			// Somehow, if we use std::min(maxDistance, tMax) as max distance, this sometimes misses intersection.
-			// TODO: Test why this is.
-			return IntersectRay(ref ray, ref hitInfo, Mathf.Max(0.0f, tMin), maxDistance);
+			// TODO: Test why this is.;
+			return IntersectRay(ref ray, ref hitInfo, Math.Max(0.0f, tMin), maxDistance);
+		}
+
+		private bool IntersectRayRec(ref Ray ray, ref RaycastHit hitInfo, KDTreeNode node)
+		{
+			if (node.IsLeaf)
+			{
+				bool hit = false;
+				
+				foreach (Triangle element in node.Elements)
+				{
+					// Perform the ray-triangle intersection
+					if (element.IntersectRay(ref ray, ref hitInfo, hitInfo.distance))
+					{
+						hitInfo.element = element;
+						hit = true;
+					}
+				}
+
+				return hit;
+			}
+			else
+			{
+				return IntersectRayRec(ref ray, ref hitInfo, nodes[node.UpperNodeIdx]) || IntersectRayRec(ref ray, ref hitInfo, nodes[node.LowerNodeIdx]);
+			}
 		}
 
 		private bool IntersectRay(ref Ray ray, ref RaycastHit hitInfo, float tMin, float tMax)
 		{
 			// Setup a traversal stack and add the root node
-			KDTraversalStack stack = new KDTraversalStack(maxDepth);
-			stack.Push(rootNode, tMin, tMax);
+			KDTraversalStack stack = new KDTraversalStack(maxDepth * 2);
+			stack.Push(nodes[0], tMin, tMax);
 
 			while (!stack.IsEmpty)
 			{
@@ -144,7 +164,7 @@ namespace Superluminal
 
 				tMin = stackNode.tMin;
 				tMax = stackNode.tMax;
-
+				
 				while (!node.IsLeaf)
 				{
 					int axis = node.SplitAxis;
@@ -165,19 +185,31 @@ namespace Superluminal
 						farNode = nodes[node.LowerNodeIdx];
 					}
 
-					float tSplit = (splitPoint - ray.Origin[axis]) * ray.InvDirection[axis];
-
-					if (tSplit >= tMax || tSplit < 0)
-						node = nearNode; // Node leaves the bounds before entering far node or will never enter it
-					else if (tSplit <= tMin)
-						node = farNode; // Node only enters the bounds when it is in the far node
-					else
+					if (ray.Direction[axis] != 0.0f)
 					{
-						// The ray will enter both child node. Store the far node and continue with the near node first
+						float tSplit = (splitPoint - ray.Origin[axis]) * ray.InvDirection[axis];
+
+						if (tSplit >= tMax || tSplit < 0)
+							node = nearNode; // Node leaves the bounds before entering far node or will never enter it
+						else if (tSplit <= tMin)
+							node = farNode; // Node only enters the bounds when it is in the far node
+						else
+						{
+							// The ray will enter both child node. Store the far node and continue with the near node first
+							stack.Push(farNode, tSplit, tMax);
+
+							node = nearNode;
+							tMax = tSplit;
+						}
+
 						stack.Push(farNode, tSplit, tMax);
 
 						node = nearNode;
 						tMax = tSplit;
+					}
+					else
+					{
+						node = nearNode;
 					}
 				}
 
@@ -212,7 +244,7 @@ namespace Superluminal
 
 		public KDTreeNode RootNode
 		{
-			get { return rootNode; }
+			get { return nodes.Count > 0 ? nodes[0] : null; }
 		}
 
 		public AABB Bounds

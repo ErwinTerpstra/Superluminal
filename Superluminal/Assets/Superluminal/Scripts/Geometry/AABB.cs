@@ -43,16 +43,16 @@ namespace Superluminal
 		public bool IntersectRay(ref Ray ray, out float tMin, out float tMax)
 		{
 			// Find the shortest intersection between the ray and an axis of the box
-			float cMin = (min.x - ray.Origin.x) * ray.InvDirection.x;
-			float cMax = (max.x - ray.Origin.x) * ray.InvDirection.x;
+			tMin = -float.MaxValue;
+			tMax = float.MaxValue;
 
-			tMin = Math.Min(cMin, cMax);
-			tMax = Math.Max(cMin, cMax);
-
-			for (int axis = 1; axis < 3; ++axis)
+			for (int axis = 0; axis < 3; ++axis)
 			{
-				cMin = (min[axis] - ray.Origin[axis]) * ray.InvDirection[axis];
-				cMax = (max[axis] - ray.Origin[axis]) * ray.InvDirection[axis];
+				if (ray.Direction[axis] == 0.0f)
+					continue;
+
+				float cMin = (min[axis] - ray.Origin[axis]) * ray.InvDirection[axis];
+				float cMax = (max[axis] - ray.Origin[axis]) * ray.InvDirection[axis];
 				
 				tMin = Math.Max(tMin, Math.Min(cMin, cMax));
 				tMax = Math.Min(tMax, Math.Max(cMin, cMax));

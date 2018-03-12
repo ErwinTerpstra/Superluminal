@@ -54,8 +54,11 @@ namespace Superluminal
 
 				float NdotL = Vector3.Dot(normal, -light.transform.forward);
 
-				Color radiance = SampleLight(position, normal, light);
-				irradiance += radiance * NdotL;
+				if (NdotL > 0.0f)
+				{
+					Color radiance = SampleLight(position, normal, light);
+					irradiance += radiance * NdotL;
+				}
 			}
 
 			return irradiance;
@@ -64,12 +67,16 @@ namespace Superluminal
 		public Color SampleLight(Vector3 position, Vector3 normal, Light light)
 		{
 			Vector3 l = -light.transform.forward;
-
+			
 			Ray shadowRay = new Ray(position + normal * 1e-4f, l);
 			RaycastHit shadowHitInfo;
 			if (context.Raycast(ref shadowRay, out shadowHitInfo))
+			{
+				Debug.DrawLine(shadowRay.Origin, shadowHitInfo.position, Color.red, 1.0f);
 				return Color.black;
-
+			}
+			
+			Debug.DrawLine(shadowRay.Origin, shadowRay.Origin + shadowRay.Direction, Color.green, 1.0f);
 			return light.color;
 		}
 

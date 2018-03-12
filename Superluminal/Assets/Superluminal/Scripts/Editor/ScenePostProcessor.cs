@@ -16,17 +16,23 @@ namespace Superluminal
 			if (bakeData == null)
 				return;
 
+			HashSet<GameObject> rootObjects = new HashSet<GameObject>();
+
 			foreach (BakeTarget binding in bakeData.targets)
 			{
-				if (binding.bakedMesh == null)
+				if (binding.bakedMesh == null || binding.renderer == null)
 					continue;
 
 				MeshFilter meshFilter = binding.renderer.GetComponent<MeshFilter>();
 				meshFilter.sharedMesh = binding.bakedMesh;
 
 				binding.renderer.enabled = true;
+
+				rootObjects.Add(binding.renderer.transform.root.gameObject);
 			}
 
+			foreach (GameObject root in rootObjects)
+				StaticBatchingUtility.Combine(root);
 			
 		}
 	}
