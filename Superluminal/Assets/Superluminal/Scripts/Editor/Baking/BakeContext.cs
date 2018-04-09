@@ -11,7 +11,7 @@ namespace Superluminal
 		{
 			public Submesh submesh;
 		}
-
+		
 		private KDTree tree;
 
 		private Dictionary<Triangle, TriangleData> triangleMap;

@@ -115,9 +115,9 @@ namespace Superluminal
 		/// <returns>1 if the triangle is on the positive side, -1 if it's on the negative side. 0 if it intersects the plane.</returns>
 		public int SideOfAAPlane(int axis, float position)
 		{
-			int a = Math.Sign(v0[axis] - position);
-			int b = Math.Sign(v1[axis] - position);
-			int c = Math.Sign(v2[axis] - position);
+			int a = FloatMath.Sign(v0[axis] - position);
+			int b = FloatMath.Sign(v1[axis] - position);
+			int c = FloatMath.Sign(v2[axis] - position);
 
 			// If all vertices are on the same side, return that side
 			// Otherwise the triangle intersects the plane
