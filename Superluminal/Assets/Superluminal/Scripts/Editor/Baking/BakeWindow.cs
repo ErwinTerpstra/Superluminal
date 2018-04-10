@@ -21,13 +21,15 @@ namespace Superluminal
 
 		private Lightbaker baker;
 
-		private bool showSettings;
+		private BakeDispatcher dispatcher;
 
-		private System.Collections.IEnumerator bakeEnumerator;
+		private bool showSettings;
 
 		private void OnEnable()
 		{
 			bakeSettings = CreateInstance<BakeSettings>();
+
+			dispatcher = new BakeDispatcher();
 
 			Scene activeScene = EditorSceneManager.GetActiveScene();
 			BakeData bakeData = FindObjectOfType<BakeData>();
@@ -42,6 +44,8 @@ namespace Superluminal
 			EditorApplication.playModeStateChanged += OnPlayModeChanged;
 
 			Camera.onPostRender += OnCameraPostRender;
+
+			EditorApplication.update += Update;
 		}
 
 		private void OnDisable()
@@ -54,8 +58,21 @@ namespace Superluminal
 
 			Camera.onPostRender -= OnCameraPostRender;
 
+			EditorApplication.update -= Update;
+
 			DestroyImmediate(bakeSettings);
 			bakeSettings = null;
+		}
+
+		private void Update()
+		{
+			dispatcher.UpdateForeground();
+
+			if (baker.IsBaking)
+			{
+				SceneView.RepaintAll();
+				Repaint();
+			}
 		}
 
 		private void OnGUI()
@@ -174,14 +191,14 @@ namespace Superluminal
 
 			// Bake button
 			if (GUILayout.Button("Bake"))
-				StartBake();
+				dispatcher.StartBake(baker);
 
 			// Cancel button
 			wasEnabled = GUI.enabled;
 			GUI.enabled = baker.IsBaking;
 
 			if (GUILayout.Button("Cancel"))
-				CancelBake();
+				dispatcher.CancelBake();
 
 			GUI.enabled = wasEnabled;
 
@@ -235,36 +252,7 @@ namespace Superluminal
 			// Make sure the scene will be saved
 			EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
 		}
-
-		private void StartBake()
-		{
-			if (baker.IsBaking)
-			{
-				Debug.LogError("Previous bake has not finished yet!");
-				return;
-			}
-
-			bakeEnumerator = baker.Bake();
-			EditorApplication.update += ContinueBake;
-		}
-
-		private void ContinueBake()
-		{
-			if (!bakeEnumerator.MoveNext())
-			{
-				EditorApplication.update -= ContinueBake;
-				SceneView.RepaintAll();
-			}
-
-			Repaint();
-		}
-
-		private void CancelBake()
-		{
-			baker.CancelBake();
-			EditorApplication.update -= ContinueBake;
-		}
-
+		
 		private void DrawKDTreeNode(KDTree tree, KDTreeNode node, AABB bounds)
 		{
 			Handles.DrawWireCube(bounds.Center, bounds.Size);

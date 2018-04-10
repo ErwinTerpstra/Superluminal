@@ -63,7 +63,7 @@ namespace Superluminal
 			else
 				indirect = Color.black;
 
-			shadingInfo.color = (ambient + direct + indirect) * diffuse;
+			shadingInfo.color = (ambient + direct + indirect) * diffuse / FloatMath.PI;
 		}
 
 		public Color SampleSkybox(Vector3 direction)

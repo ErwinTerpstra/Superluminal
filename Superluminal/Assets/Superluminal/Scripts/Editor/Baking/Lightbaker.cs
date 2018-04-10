@@ -53,7 +53,7 @@ namespace Superluminal
 
 		}
 
-		public System.Collections.IEnumerator Bake()
+		public IEnumerator<BakeCommand> Bake()
 		{
 			state = new BakeState();
 			state.totalMeshes = targets.Count;
@@ -72,7 +72,10 @@ namespace Superluminal
 			foreach (KeyValuePair<string, BakeTarget> pair in targets)
 			{
 				// Bake the new mesh
-				Bake(pair.Value);
+				IEnumerator<BakeCommand> bakeEnumerator = Bake(pair.Value);
+
+				while (bakeEnumerator.MoveNext())
+					yield return bakeEnumerator.Current;
 
 				// Store the new baked mesh
 				meshRespository.StoreMesh(pair.Value.bakedMesh, pair.Value.guid);
@@ -107,7 +110,7 @@ namespace Superluminal
 			context.Setup(submeshes, lights);
 		}
 
-		private void Bake(BakeTarget target)
+		private IEnumerator<BakeCommand> Bake(BakeTarget target)
 		{
 			Vector3[] vertices = target.originalMesh.vertices;
 			Vector3[] normals = target.originalMesh.normals;
@@ -138,9 +141,11 @@ namespace Superluminal
 
 				position = target.renderer.transform.TransformPoint(position);
 				normal = target.renderer.transform.TransformDirection(normal);
-
+				
 				Color irradiance = raytracer.Integrate(position, normal, settings.bounces, settings.indirectSamples);
 				colors[vertexIdx] = irradiance;
+
+				yield return null;
 			}
 			
 
