@@ -18,6 +18,8 @@ namespace Superluminal
 
 		private Light[] lights;
 
+		private long castedRayCount;
+
 		public BakeContext()
 		{
 			tree = new KDTree();
@@ -26,6 +28,8 @@ namespace Superluminal
 
 		public void Setup(List<Submesh> submeshes, List<Light> lights)
 		{
+			castedRayCount = 0;
+
 			ProcessMeshes(submeshes);
 
 			this.lights = lights.ToArray();
@@ -84,6 +88,8 @@ namespace Superluminal
 		/// <returns></returns>
 		public bool Raycast(ref Ray ray, out RaycastHit hitInfo)
 		{
+			++castedRayCount;
+
 			hitInfo = new RaycastHit();
 			return tree.IntersectRay(ref ray, ref hitInfo);
 		}
@@ -120,5 +126,9 @@ namespace Superluminal
 			get { return lights; }
 		}
 
+		public long CastedRayCount
+		{
+			get { return castedRayCount; }
+		}
 	}
 }

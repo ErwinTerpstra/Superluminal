@@ -43,7 +43,7 @@ namespace Superluminal
 		{
 			this.baker = baker;
 
-			bakeEnumerator = baker.Bake();
+			bakeEnumerator = baker.BakeRoutine();
 		}
 
 		public void CancelBake()
@@ -52,10 +52,15 @@ namespace Superluminal
 			bakeEnumerator = null;
 		}
 
-		public void UpdateForeground()
+		public bool UpdateForeground()
 		{
 			if (bakeEnumerator != null && !continueInBackground)
+			{
 				ExecuteBake();
+				return true;
+			}
+
+			return false;
 		}
 
 		private void UpdateBackground()

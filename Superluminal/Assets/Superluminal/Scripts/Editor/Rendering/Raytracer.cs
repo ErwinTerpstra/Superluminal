@@ -11,6 +11,8 @@ namespace Superluminal
 
 		private PRNG rng;
 
+		private long rays;
+
 		public Raytracer(BakeContext context)
 		{
 			this.context = context;
@@ -54,7 +56,7 @@ namespace Superluminal
 
 			Color diffuse = submesh.material.GetColor("_Color");
 
-			Color ambient = Color.black;// SampleAmbient(hitInfo.element.Normal);
+			Color ambient = SampleAmbient(hitInfo.element.Normal);
 			Color direct = SampleDirectLight(hitInfo.position, hitInfo.element.Normal);
 			Color indirect;
 
@@ -81,7 +83,7 @@ namespace Superluminal
 			switch (RenderSettings.ambientMode)
 			{
 				case UnityEngine.Rendering.AmbientMode.Flat:
-					return RenderSettings.ambientLight;
+					return RenderSettings.ambientLight * FloatMath.INV_PI;
 
 				default:
 					return Color.black;

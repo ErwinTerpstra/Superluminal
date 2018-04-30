@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,6 +11,12 @@ namespace Superluminal
 		public int bakedMeshes;
 
 		public int totalMeshes;
+
+		public long rays;
+
+		public DateTime? bakingStart;
+
+		public DateTime? bakingEnd;
 
 		public BakeState()
 		{

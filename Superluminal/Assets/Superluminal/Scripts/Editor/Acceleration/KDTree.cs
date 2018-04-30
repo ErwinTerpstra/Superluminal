@@ -11,16 +11,20 @@ namespace Superluminal
 	public class KDTree
 	{
 		private int maxDepth;
-
-
+		
 		private AABB bounds;
 
 		private List<KDTreeNode> nodes;
 
+		private KDTraversalStack traversalStack;
+
 		public KDTree()
 		{
+			// TODO: KD tree traversal is slow at the moment, disable it until we optimize it
+			maxDepth = 0;
+
 			nodes = new List<KDTreeNode>();
-			maxDepth = 25;
+			traversalStack = new KDTraversalStack(maxDepth * 2 + 1);
 		}
 
 		/// <summary>
@@ -154,12 +158,12 @@ namespace Superluminal
 		private bool IntersectRay(ref Ray ray, ref RaycastHit hitInfo, float tMin, float tMax)
 		{
 			// Setup a traversal stack and add the root node
-			KDTraversalStack stack = new KDTraversalStack(maxDepth * 2);
-			stack.Push(nodes[0], tMin, tMax);
+			traversalStack.Clear();
+			traversalStack.Push(nodes[0], tMin, tMax);
 
-			while (!stack.IsEmpty)
+			while (!traversalStack.IsEmpty)
 			{
-				KDStackNode stackNode = stack.Pop();
+				KDStackNode stackNode = traversalStack.Pop();
 				KDTreeNode node = stackNode.node;
 
 				tMin = stackNode.tMin;
@@ -196,13 +200,13 @@ namespace Superluminal
 						else
 						{
 							// The ray will enter both child node. Store the far node and continue with the near node first
-							stack.Push(farNode, tSplit, tMax);
+							traversalStack.Push(farNode, tSplit, tMax);
 
 							node = nearNode;
 							tMax = tSplit;
 						}
 
-						stack.Push(farNode, tSplit, tMax);
+						traversalStack.Push(farNode, tSplit, tMax);
 
 						node = nearNode;
 						tMax = tSplit;

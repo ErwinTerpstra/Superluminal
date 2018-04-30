@@ -66,9 +66,7 @@ namespace Superluminal
 
 		private void Update()
 		{
-			dispatcher.UpdateForeground();
-
-			if (baker.IsBaking)
+			if (dispatcher.UpdateForeground())
 			{
 				SceneView.RepaintAll();
 				Repaint();
@@ -158,68 +156,102 @@ namespace Superluminal
 			BakeState state = baker.State;
 			if (state != null)
 			{
+				{
+					EditorGUILayout.BeginHorizontal();
+
+					Rect rect = EditorGUILayout.GetControlRect();
+
+					float progress = 0.0f;
+					string label = state.step.ToString();
+
+					switch (state.step)
+					{
+						case BakeStep.BAKING:
+							progress = state.bakedMeshes / (float)state.totalMeshes;
+							label += string.Format(" {0}/{1}", state.bakedMeshes, state.totalMeshes);
+							break;
+
+						case BakeStep.STORING_BAKE_DATA:
+							progress = 1.0f;
+							break;
+
+						case BakeStep.CANCELLED:
+						case BakeStep.FINISHED:
+							progress = 1.0f;
+							break;
+					}
+
+					EditorGUI.ProgressBar(rect, progress, label);
+
+					EditorGUILayout.EndHorizontal();
+				}
+
+
+				{
+
+					double raysPerSecond;
+					if (baker.Context.CastedRayCount > 0)
+					{
+						DateTime startTime = state.bakingStart.Value;
+						DateTime endTime = state.bakingEnd.GetValueOrDefault(DateTime.Now);
+
+						raysPerSecond = baker.Context.CastedRayCount / (endTime - startTime).TotalSeconds;
+					}
+					else
+						raysPerSecond = 0.0;
+
+					EditorGUILayout.BeginHorizontal();
+					EditorGUILayout.LabelField("Rays", string.Format("{0}", baker.Context.CastedRayCount));
+					EditorGUILayout.EndHorizontal();
+
+					EditorGUILayout.BeginHorizontal();
+					EditorGUILayout.LabelField("Speed", string.Format("{0:0.0}KRays/s", raysPerSecond / 1e3));
+					EditorGUILayout.EndHorizontal();
+				}
+			}
+
+			{
 				EditorGUILayout.BeginHorizontal();
 
-				Rect rect = EditorGUILayout.GetControlRect();
-
-				float progress = 0.0f;
-				string label = state.step.ToString();
-
-				switch (state.step)
+				// Bake button
+				if (GUILayout.Button("Bake"))
 				{
-					case BakeStep.BAKING:
-						progress = state.bakedMeshes / (float) state.totalMeshes;
-						label += string.Format(" {0}/{1}", state.bakedMeshes, state.totalMeshes);
-						break;
-
-					case BakeStep.STORING_BAKE_DATA:
-						progress = 1.0f;
-						break;
-
-					case BakeStep.CANCELLED:
-					case BakeStep.FINISHED:
-						progress = 1.0f;
-						break;
+					//dispatcher.StartBake(baker);
+					baker.Bake();
 				}
-				
-				EditorGUI.ProgressBar(rect, progress, label);
+
+				// Cancel button
+				wasEnabled = GUI.enabled;
+				GUI.enabled = baker.IsBaking;
+
+				if (GUILayout.Button("Cancel"))
+					dispatcher.CancelBake();
+
+				GUI.enabled = wasEnabled;
 
 				EditorGUILayout.EndHorizontal();
 			}
 
-			EditorGUILayout.BeginHorizontal();
-
-			// Bake button
-			if (GUILayout.Button("Bake"))
-				dispatcher.StartBake(baker);
-
-			// Cancel button
-			wasEnabled = GUI.enabled;
-			GUI.enabled = baker.IsBaking;
-
-			if (GUILayout.Button("Cancel"))
-				dispatcher.CancelBake();
-
-			GUI.enabled = wasEnabled;
-
-			EditorGUILayout.EndHorizontal();
-
-			EditorGUILayout.BeginHorizontal();
-			EditorGUILayout.LabelField("Active scene", baker.Scene.name);
-			EditorGUILayout.EndHorizontal();
-
-			EditorGUILayout.BeginHorizontal();
-
-			if (baker.HasBakeData)
 			{
-				EditorGUILayout.LabelField("Baked meshes", baker.BakeTargets.Length.ToString());
-			}
-			else
-			{
-				EditorGUILayout.LabelField("No bake data yet");
+				EditorGUILayout.BeginHorizontal();
+				EditorGUILayout.LabelField("Active scene", baker.Scene.name);
+				EditorGUILayout.EndHorizontal();
 			}
 
-			EditorGUILayout.EndHorizontal();
+			{
+				EditorGUILayout.BeginHorizontal();
+
+				if (baker.HasBakeData)
+				{
+					EditorGUILayout.LabelField("Baked meshes", baker.BakeTargets.Length.ToString());
+				}
+				else
+				{
+					EditorGUILayout.LabelField("No bake data yet");
+				}
+
+				EditorGUILayout.EndHorizontal();
+			}
 
 			GUI.enabled = true;
 		}

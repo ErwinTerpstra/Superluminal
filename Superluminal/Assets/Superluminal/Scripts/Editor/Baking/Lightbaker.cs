@@ -7,6 +7,8 @@ using UnityEngine.SceneManagement;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 
+using DateTime = System.DateTime;
+
 namespace Superluminal
 {
 	/// <summary>
@@ -53,7 +55,43 @@ namespace Superluminal
 
 		}
 
-		public IEnumerator<BakeCommand> Bake()
+		public void Bake()
+		{
+			state = new BakeState();
+			state.totalMeshes = targets.Count;
+
+			state.step = BakeStep.PREPARING_SCENE;
+
+			PreBake();
+
+			meshRespository = MeshRepository.Create(scene);
+
+			state.step = BakeStep.BAKING;
+
+			state.bakingStart = DateTime.Now;
+
+			// Iterate through all bake targets
+			foreach (KeyValuePair<string, BakeTarget> pair in targets)
+			{
+				// Bake the new mesh
+				Bake(pair.Value);
+
+				// Store the new baked mesh
+				meshRespository.StoreMesh(pair.Value.bakedMesh, pair.Value.guid);
+
+				++state.bakedMeshes;
+			}
+
+			state.bakingEnd = DateTime.Now;
+
+			state.step = BakeStep.STORING_BAKE_DATA;
+			
+			StoreBakeData();
+
+			state.step = BakeStep.FINISHED;
+		}
+
+		public IEnumerator<BakeCommand> BakeRoutine()
 		{
 			state = new BakeState();
 			state.totalMeshes = targets.Count;
@@ -68,14 +106,13 @@ namespace Superluminal
 			state.step = BakeStep.BAKING;
 			yield return null;
 
+			state.bakingStart = DateTime.Now;
+
 			// Iterate through all bake targets
 			foreach (KeyValuePair<string, BakeTarget> pair in targets)
 			{
 				// Bake the new mesh
-				IEnumerator<BakeCommand> bakeEnumerator = Bake(pair.Value);
-
-				while (bakeEnumerator.MoveNext())
-					yield return bakeEnumerator.Current;
+				Bake(pair.Value);
 
 				// Store the new baked mesh
 				meshRespository.StoreMesh(pair.Value.bakedMesh, pair.Value.guid);
@@ -84,7 +121,9 @@ namespace Superluminal
 
 				yield return null;
 			}
-			
+
+			state.bakingEnd = DateTime.Now;
+
 			state.step = BakeStep.STORING_BAKE_DATA;
 			yield return null;
 
@@ -110,7 +149,7 @@ namespace Superluminal
 			context.Setup(submeshes, lights);
 		}
 
-		private IEnumerator<BakeCommand> Bake(BakeTarget target)
+		private void Bake(BakeTarget target)
 		{
 			Vector3[] vertices = target.originalMesh.vertices;
 			Vector3[] normals = target.originalMesh.normals;
@@ -144,8 +183,6 @@ namespace Superluminal
 				
 				Color irradiance = raytracer.Integrate(position, normal, settings.bounces, settings.indirectSamples);
 				colors[vertexIdx] = irradiance;
-
-				yield return null;
 			}
 			
 
@@ -256,7 +293,6 @@ namespace Superluminal
 							renderer = renderer,
 							originalMesh = mesh,
 							bakedMesh = null,
-							preview = null,
 
 							submeshes = targetSubmeshes,
 						};

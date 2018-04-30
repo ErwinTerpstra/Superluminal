@@ -23,6 +23,11 @@ namespace Superluminal
 			count = 0;
 		}
 
+		public void Clear()
+		{
+			count = 0;
+		}
+
 		public void Push(KDTreeNode node, float tMin, float tMax)
 		{
 			stack[count] = new KDStackNode()
