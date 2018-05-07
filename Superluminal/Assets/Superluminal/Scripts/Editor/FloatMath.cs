@@ -23,5 +23,7 @@ namespace Superluminal
 		public static float Min(float a, float b) { return System.Math.Min(a, b); }
 
 		public static int Sign(float x) { return System.Math.Sign(x); }
+		
+		public static int RoundToInt(float x) { return (int)System.Math.Round(x); }
 	}
 }

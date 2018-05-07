@@ -7,13 +7,13 @@ namespace Superluminal
 {
 	public class Raytracer
 	{
-		private BakeContext context;
+		private RaytracerContext context;
 
 		private PRNG rng;
 
 		private long rays;
 
-		public Raytracer(BakeContext context)
+		public Raytracer(RaytracerContext context)
 		{
 			this.context = context;
 

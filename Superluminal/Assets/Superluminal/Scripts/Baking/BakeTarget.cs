@@ -15,7 +15,7 @@ namespace Superluminal
 
 		public Mesh bakedMesh;
 
-		public List<BakeTargetSubmesh> submeshes;
+		public BakeTargetSubmesh[] submeshes;
 	}
 
 	[System.Serializable]
@@ -23,7 +23,9 @@ namespace Superluminal
 	{ 
 		public int idx;
 
-		public Material material;
+		public Material originalMaterial;
+
+		public Material bakedMaterial;
 
 	}
 }

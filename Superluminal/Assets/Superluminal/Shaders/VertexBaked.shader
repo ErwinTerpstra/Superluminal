@@ -57,10 +57,10 @@
 			{
 				// Sample the texture
 				fixed4 color = tex2D(_MainTex, i.uv) * i.color;
-
+			
 				// Apply fog
 				UNITY_APPLY_FOG(i.fogCoord, color);
-
+				
 				return color;
 			}
 			ENDCG

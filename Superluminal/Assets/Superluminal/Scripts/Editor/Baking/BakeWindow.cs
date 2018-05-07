@@ -141,10 +141,10 @@ namespace Superluminal
 			{
 				showSettings = EditorGUILayout.Foldout(showSettings, "Settings");
 
-				if (showSettings)
+				if (showSettings && bakeSettings != null)
 				{
 					++EditorGUI.indentLevel;
-
+					
 					Editor editor = Editor.CreateEditor(bakeSettings);
 					editor.DrawDefaultInspector();
 
@@ -186,22 +186,23 @@ namespace Superluminal
 					EditorGUILayout.EndHorizontal();
 				}
 
-
+				if (baker.Backend is RaytracerBackend)
 				{
+					RaytracerContext context = (baker.Backend as RaytracerBackend).Context;
 
 					double raysPerSecond;
-					if (baker.Context.CastedRayCount > 0)
+					if (context.CastedRayCount > 0)
 					{
 						DateTime startTime = state.bakingStart.Value;
 						DateTime endTime = state.bakingEnd.GetValueOrDefault(DateTime.Now);
 
-						raysPerSecond = baker.Context.CastedRayCount / (endTime - startTime).TotalSeconds;
+						raysPerSecond = context.CastedRayCount / (endTime - startTime).TotalSeconds;
 					}
 					else
 						raysPerSecond = 0.0;
 
 					EditorGUILayout.BeginHorizontal();
-					EditorGUILayout.LabelField("Rays", string.Format("{0}", baker.Context.CastedRayCount));
+					EditorGUILayout.LabelField("Rays", string.Format("{0}", context.CastedRayCount));
 					EditorGUILayout.EndHorizontal();
 
 					EditorGUILayout.BeginHorizontal();
@@ -216,8 +217,7 @@ namespace Superluminal
 				// Bake button
 				if (GUILayout.Button("Bake"))
 				{
-					//dispatcher.StartBake(baker);
-					baker.Bake();
+					dispatcher.StartBake(baker);
 				}
 
 				// Cancel button
@@ -313,9 +313,10 @@ namespace Superluminal
 				{
 					//Graphics.DrawMesh(target.bakedMesh, target.renderer.transform.localToWorldMatrix, submesh.material, 0, camera, submesh.idx);
 
-					for (int passIdx = 0; passIdx < submesh.material.passCount; ++passIdx)
+					Material material = submesh.bakedMaterial != null ? submesh.bakedMaterial : submesh.originalMaterial;
+					for (int passIdx = 0; passIdx < material.passCount; ++passIdx)
 					{
-						submesh.material.SetPass(passIdx);
+						material.SetPass(passIdx);
 						Graphics.DrawMeshNow(target.bakedMesh, target.renderer.transform.localToWorldMatrix, submesh.idx);
 					}
 				}
@@ -324,9 +325,9 @@ namespace Superluminal
 
 		private void OnSceneGUI(SceneView sceneView)
 		{
-			if (baker != null && drawKDTree)
+			if (baker != null && drawKDTree && baker.Backend is RaytracerBackend)
 			{
-				KDTree tree = baker.Context.Tree;
+				KDTree tree = (baker.Backend as RaytracerBackend).Context.Tree;
 
 				if (tree.RootNode != null)
 					DrawKDTreeNode(tree, tree.RootNode, tree.Bounds);

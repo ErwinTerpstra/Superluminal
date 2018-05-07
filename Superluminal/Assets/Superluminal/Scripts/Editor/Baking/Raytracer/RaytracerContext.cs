@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Superluminal
 {
-	public class BakeContext
+	public class RaytracerContext
 	{
 		private struct TriangleData
 		{
@@ -20,7 +20,7 @@ namespace Superluminal
 
 		private long castedRayCount;
 
-		public BakeContext()
+		public RaytracerContext()
 		{
 			tree = new KDTree();
 			triangleMap = new Dictionary<Triangle, TriangleData>();

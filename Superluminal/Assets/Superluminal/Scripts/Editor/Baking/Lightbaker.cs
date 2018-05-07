@@ -16,16 +16,12 @@ namespace Superluminal
 	/// </summary>
 	public class Lightbaker
 	{
-
-		private BakeContext context;
-
-		private Raytracer raytracer;
+		
+		private BakeBackend backend;
 
 		private Dictionary<string, BakeTarget> targets;
-
-		private Dictionary<MeshRenderer, BakeTarget> rendererMap;
-
-		private MeshRepository meshRespository;
+		
+		private BakedAssetRepository bakedAssetRepository;
 
 		private Scene scene;
 
@@ -35,19 +31,17 @@ namespace Superluminal
 
 		private BakeState state;
 
+		private Shader shader;
+
 		public Lightbaker(Scene scene, BakeData bakeData, BakeSettings settings)
 		{
 			this.scene = scene;
 			this.bakeData = bakeData;
 			this.settings = settings;
 
+			shader = Shader.Find("Superluminal/VertexBaked");
+
 			targets = new Dictionary<string, BakeTarget>();
-			rendererMap = new Dictionary<MeshRenderer, BakeTarget>();
-
-			context = new BakeContext();
-			raytracer = new Raytracer(context);
-
-			ReadBakeData();
 		}
 
 		public void Destroy()
@@ -55,72 +49,58 @@ namespace Superluminal
 
 		}
 
-		public void Bake()
-		{
-			state = new BakeState();
-			state.totalMeshes = targets.Count;
-
-			state.step = BakeStep.PREPARING_SCENE;
-
-			PreBake();
-
-			meshRespository = MeshRepository.Create(scene);
-
-			state.step = BakeStep.BAKING;
-
-			state.bakingStart = DateTime.Now;
-
-			// Iterate through all bake targets
-			foreach (KeyValuePair<string, BakeTarget> pair in targets)
-			{
-				// Bake the new mesh
-				Bake(pair.Value);
-
-				// Store the new baked mesh
-				meshRespository.StoreMesh(pair.Value.bakedMesh, pair.Value.guid);
-
-				++state.bakedMeshes;
-			}
-
-			state.bakingEnd = DateTime.Now;
-
-			state.step = BakeStep.STORING_BAKE_DATA;
-			
-			StoreBakeData();
-
-			state.step = BakeStep.FINISHED;
-		}
-
 		public IEnumerator<BakeCommand> BakeRoutine()
 		{
 			state = new BakeState();
 			state.totalMeshes = targets.Count;
-			
+
 			state.step = BakeStep.PREPARING_SCENE;
 			yield return null;
 
 			PreBake();
-			
-			meshRespository = MeshRepository.Create(scene);
-			
+
+			bakedAssetRepository = BakedAssetRepository.Create(scene);
+
 			state.step = BakeStep.BAKING;
 			yield return null;
 
 			state.bakingStart = DateTime.Now;
+			
+			Dictionary<Material, Material> bakedMaterialMap = new Dictionary<Material, Material>();
 
 			// Iterate through all bake targets
 			foreach (KeyValuePair<string, BakeTarget> pair in targets)
 			{
+				// Assign baked materials for each submesh
+				foreach (BakeTargetSubmesh submesh in pair.Value.submeshes)
+				{
+					Material bakedMaterial;
+
+					if (!bakedMaterialMap.TryGetValue(submesh.originalMaterial, out bakedMaterial))
+					{
+						bakedMaterial = new Material(submesh.originalMaterial);
+						bakedMaterial.shader = shader;
+
+						bakedMaterialMap.Add(submesh.originalMaterial, bakedMaterial);
+					}
+
+					submesh.bakedMaterial = bakedMaterial;
+				}
+
 				// Bake the new mesh
-				Bake(pair.Value);
+				backend.Bake(pair.Value);
 
 				// Store the new baked mesh
-				meshRespository.StoreMesh(pair.Value.bakedMesh, pair.Value.guid);
+				bakedAssetRepository.StoreMesh(pair.Value.bakedMesh, pair.Value.guid);
 
 				++state.bakedMeshes;
 
 				yield return null;
 			}
+
+			// Store all materials
+			foreach (var pair in bakedMaterialMap)
+				bakedAssetRepository.StoreMaterial(pair.Value, GUID.Generate().ToString());
 
 			state.bakingEnd = DateTime.Now;
 
@@ -137,76 +117,21 @@ namespace Superluminal
 			if (state != null)
 				state.step = BakeStep.CANCELLED;
 		}
-		
+
 		private void PreBake()
 		{
-			List<Light> lights = new List<Light>();
-			List<Submesh> submeshes = new List<Submesh>();
-
-			CollectMeshes(submeshes);
-			CollectLights(lights);
-
-			context.Setup(submeshes, lights);
-		}
-
-		private void Bake(BakeTarget target)
-		{
-			Vector3[] vertices = target.originalMesh.vertices;
-			Vector3[] normals = target.originalMesh.normals;
-			Vector2[] texcoords = target.originalMesh.uv;
-			
-			// Create a new mesh with the same vertex attributes
-			Mesh bakedMesh = new Mesh();
-			bakedMesh.vertices = vertices;
-			bakedMesh.normals = normals;
-			bakedMesh.uv = texcoords;
-
-			// Copy submesh indices to the new mesh
-			List<int> indices = new List<int>();
-			for (int submeshIdx = 0; submeshIdx < target.originalMesh.subMeshCount; ++submeshIdx)
+			switch (settings.backendType)
 			{
-				indices.Clear();
-				target.originalMesh.GetIndices(indices, submeshIdx);
-				bakedMesh.SetTriangles(indices, submeshIdx);
-			}
+				case BakeBackendType.RAYTRACER:
+					backend = new RaytracerBackend(settings);
+					break;
 
-			// Bake vertex colors
-			Color[] colors = new Color[target.originalMesh.vertexCount];
-
-			for (int vertexIdx = 0; vertexIdx < vertices.Length; ++vertexIdx)
-			{
-				Vector3 position = vertices[vertexIdx];
-				Vector3 normal = normals[vertexIdx];
-
-				position = target.renderer.transform.TransformPoint(position);
-				normal = target.renderer.transform.TransformDirection(normal);
-				
-				Color irradiance = raytracer.Integrate(position, normal, settings.bounces, settings.indirectSamples);
-				colors[vertexIdx] = irradiance;
+				case BakeBackendType.LIGHTMAP_CONVERTER:
+					backend = new LightmapConverterBackend(settings);
+					break;
 			}
 			
-
-			// Store the generated colors
-			bakedMesh.colors = colors;
-
-			target.bakedMesh = bakedMesh;
-		}
-
-		private void ReadBakeData()
-		{
-			targets.Clear();
-			rendererMap.Clear();
-
-			if (bakeData != null)
-			{
-				foreach (BakeTarget target in bakeData.targets)
-				{
-					if (target.renderer == null)
-						continue;
-
-					StoreTarget(target);
-				}
-			}
+			CollectTargets();
 		}
 
 		private void StoreBakeData()
@@ -215,26 +140,25 @@ namespace Superluminal
 			bakeData.targets = targets.Values.ToArray();
 
 			// Write the meshes to disk
-			meshRespository.Flush();
+			bakedAssetRepository.Flush();
 
 			// Make sure the scene will be saved
 			EditorSceneManager.MarkSceneDirty(scene);
 		}
-
-		private void StoreTarget(BakeTarget target)
-		{
-			targets.Add(target.guid, target);
-			rendererMap.Add(target.renderer, target);
-		}
 		
-		private void CollectMeshes(List<Submesh> submeshes)
+		private void CollectTargets()
 		{
+			targets.Clear();
+
 			List<BakeTargetSubmesh> targetSubmeshes = new List<BakeTargetSubmesh>();
 
 			MeshRenderer[] renderers = Object.FindObjectsOfType<MeshRenderer>();
 
 			foreach (MeshRenderer renderer in renderers)
 			{
+				if (!settings.includeDisabledObjects && !renderer.gameObject.activeInHierarchy)
+					continue;
+
 				// Retrieve the linked mesh
 				MeshFilter meshFilter = renderer.GetComponent<MeshFilter>();
 
@@ -256,26 +180,14 @@ namespace Superluminal
 				{
 					Material material = materials[submeshIdx % materials.Length];
 
-					// If the material has the vertex baked shader, store it as a mesh to bake
-					if ((staticFlags & settings.bakeFlags) != 0 && material.shader.name == "Superluminal/VertexBaked")
+					// Check if this is a mesh that should be baked
+					if ((staticFlags & settings.bakeFlags) != 0)/// && material.shader.name == "Superluminal/VertexBaked")
 					{
 						// Create a submesh for the binding
 						targetSubmeshes.Add(new BakeTargetSubmesh()
 						{
 							idx = submeshIdx,
-							material = material
-						});
-					}
-
-					// If the material has a supported shader, add it as a mesh that is part of the reflection.
-					if ((staticFlags & settings.occluderFlags) != 0)
-					{
-						submeshes.Add(new Submesh()
-						{
-							transform = renderer.transform,
-							material = material,
-							mesh = mesh,
-							submeshIdx = submeshIdx,
+							originalMaterial = material,
 						});
 					}
 					
@@ -283,74 +195,41 @@ namespace Superluminal
 
 				if (targetSubmeshes.Count > 0)
 				{
-					BakeTarget target;
-					if (!rendererMap.TryGetValue(renderer, out target))
+					BakeTarget target = new BakeTarget()
 					{
-						// Create a new bake target with all eligable submeshes
-						target = new BakeTarget()
-						{
-							guid = GUID.Generate().ToString(),
-							renderer = renderer,
-							originalMesh = mesh,
-							bakedMesh = null,
+						guid = GUID.Generate().ToString(),
+						renderer = renderer,
+						originalMesh = mesh,
+						bakedMesh = null,
 
-							submeshes = targetSubmeshes,
-						};
+						submeshes = targetSubmeshes.ToArray(),
+					};
 
-						StoreTarget(target);
-					}
-					else
-					{
-						foreach (BakeTargetSubmesh submesh in targetSubmeshes)
-						{
-							// Check if a submesh with this index was already present in the submesh list
-							int existingSubmeshIndex = target.submeshes.FindIndex(s => s.idx == submesh.idx);
-
-							// Remove the previous submesh
-							if (existingSubmeshIndex >= 0)
-								target.submeshes.RemoveAt(existingSubmeshIndex);
-
-							// Add the new submesh
-							target.submeshes.Add(submesh);
-						}
-					}
+					targets.Add(target.guid, target);
 				}
 			}
 		}
 
-		private void CollectLights(List<Light> lights)
-		{
-			Light[] lightComponents = Object.FindObjectsOfType<Light>();
-
-			foreach (Light light in lightComponents)
-			{
-				if (light.type != LightType.Directional)
-					continue;
-
-				lights.Add(light);
-			}
-		}
-		
 		public Scene Scene
 		{
 			get { return scene; }
 		}
 		
-		public BakeContext Context
-		{
-			get { return context; }
-		}
-
 		public bool IsBaking
 		{
 			get { return state != null && state.step != BakeStep.FINISHED && state.step != BakeStep.CANCELLED; }
+		}
+
+		public BakeBackend Backend
+		{
+			get { return backend; }
 		}
 
 		public BakeState State
 		{
 			get { return state; }
 		}
-		
+
 		public bool HasBakeData
 		{
 			get { return bakeData != null && bakeData.targets.Length > 0; }

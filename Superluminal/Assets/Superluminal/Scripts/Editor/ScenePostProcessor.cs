@@ -18,19 +18,30 @@ namespace Superluminal
 
 			HashSet<GameObject> rootObjects = new HashSet<GameObject>();
 
-			foreach (BakeTarget binding in bakeData.targets)
+			foreach (BakeTarget target in bakeData.targets)
 			{
-				if (binding.bakedMesh == null || binding.renderer == null)
+				if (target.bakedMesh == null || target.renderer == null)
 					continue;
 
-				MeshFilter meshFilter = binding.renderer.GetComponent<MeshFilter>();
-				meshFilter.sharedMesh = binding.bakedMesh;
+				// Apply the mesh
+				MeshFilter meshFilter = target.renderer.GetComponent<MeshFilter>();
+				meshFilter.sharedMesh = target.bakedMesh;
+				
+				// Apply the materials
+				Material[] materials = target.renderer.sharedMaterials;
+				foreach (BakeTargetSubmesh submesh in target.submeshes)
+					materials[submesh.idx] = submesh.bakedMaterial;
 
-				binding.renderer.enabled = true;
+				target.renderer.sharedMaterials = materials;
 
-				rootObjects.Add(binding.renderer.transform.root.gameObject);
+				// Make sure the renderer is enabled
+				target.renderer.enabled = true;
+				
+				rootObjects.Add(target.renderer.transform.root.gameObject);
 			}
 
+			// Apply static batching on all the root objects
+			// TODO: check static flags? 
 			foreach (GameObject root in rootObjects)
 				StaticBatchingUtility.Combine(root);
 			
