@@ -106,7 +106,7 @@ namespace Superluminal
 				position = target.renderer.transform.TransformPoint(position);
 				normal = target.renderer.transform.TransformDirection(normal);
 
-				Color irradiance = raytracer.Integrate(position, normal, settings.bounces, settings.indirectSamples);
+				Color irradiance = raytracer.Integrate(position, normal, settings.raytracingSettings.bounces, settings.raytracingSettings.indirectSamples);
 				colors[vertexIdx] = irradiance;
 			}
 

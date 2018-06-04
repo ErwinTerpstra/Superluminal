@@ -15,9 +15,9 @@ namespace Superluminal
 
 		public bool includeDisabledObjects = true;
 
-		public int bounces = 2;
+		public RaytracingSettings raytracingSettings = null;
 
-		public int indirectSamples = 10;
+		public TesselationSettings tesselationSettings = null;
 	}
 
 }

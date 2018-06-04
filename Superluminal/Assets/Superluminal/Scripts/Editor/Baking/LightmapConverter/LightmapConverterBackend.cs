@@ -47,13 +47,17 @@ namespace Superluminal
 			// Copy vertex attributes from the original mesh
 			Vector3[] vertices = target.originalMesh.vertices;
 			Vector3[] normals = target.originalMesh.normals;
-			Vector2[] texcoords = target.originalMesh.uv;
-			
+			Vector4[] tangents = target.originalMesh.tangents;
+			Vector2[] uv = target.originalMesh.uv;
+			Vector2[] uv2 = target.originalMesh.uv2;
+
 			// Create a new mesh with the same vertex attributes
 			Mesh bakedMesh = new Mesh();
 			bakedMesh.vertices = vertices;
 			bakedMesh.normals = normals;
-			bakedMesh.uv = texcoords;
+			bakedMesh.tangents = tangents;
+			bakedMesh.uv = uv;
+			bakedMesh.uv2 = uv2;
 
 			CopyIndices(target.originalMesh, bakedMesh);
 
@@ -65,32 +69,14 @@ namespace Superluminal
 				Debug.LogWarning("Attempt to bake renderer with invalid lightmap index!", target.renderer);
 				return;
 			}
-
-			// Check if the mesh has lightmap uvs
-			Vector2[] lightmapCoords = target.originalMesh.uv2;
-			if (lightmapCoords.Length == 0)
-				lightmapCoords = texcoords;
-
+			
 			Sampler lightmapSampler = lightmapSamplers[target.renderer.lightmapIndex];
 
-			// Bake vertex colors
-			Color[] colors = new Color[target.originalMesh.vertexCount];
-
-			for (int vertexIdx = 0; vertexIdx < vertices.Length; ++vertexIdx)
-			{
-				// Calculate the lightmap UV coordinates according to the renderer's scale and offset
-				Vector4 scaleOffset = target.renderer.lightmapScaleOffset;
-				Vector2 lightmapUV = lightmapCoords[vertexIdx];
-				lightmapUV.x = (scaleOffset.x * lightmapUV.x + scaleOffset.z);
-				lightmapUV.y = (scaleOffset.y * lightmapUV.y + scaleOffset.w);
-				
-				Color lightmapColor = lightmapSampler.SamplePoint(lightmapUV);
-				colors[vertexIdx] = lightmapColor;
-			}
-
-			// Store the generated colors
-			bakedMesh.colors = colors;			
+			Tesselator tesselator = new Tesselator(target, lightmapSampler, settings.tesselationSettings);
+			tesselator.BakeVertexColors();
+			tesselator.Tesselate();
 		}
+		
 	}
 
 }

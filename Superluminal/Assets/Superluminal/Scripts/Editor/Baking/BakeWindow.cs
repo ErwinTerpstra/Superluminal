@@ -10,6 +10,13 @@ namespace Superluminal
 {
 	public class BakeWindow : EditorWindow
 	{
+		private enum PreviewMode
+		{
+			SHADED,
+			WIREFRAME,
+			SHADED_WIREFRAME,
+		}
+
 		[SerializeField]
 		private bool drawKDTree;
 
@@ -17,11 +24,16 @@ namespace Superluminal
 		private bool previewEnabled;
 
 		[SerializeField]
+		private PreviewMode previewMode;
+
+		[SerializeField]
 		private BakeSettings bakeSettings;
 
 		private Lightbaker baker;
 
 		private BakeDispatcher dispatcher;
+
+		private WireframeRenderer wireframeRenderer;
 
 		private bool showSettings;
 
@@ -33,6 +45,8 @@ namespace Superluminal
 
 			Scene activeScene = EditorSceneManager.GetActiveScene();
 			BakeData bakeData = FindObjectOfType<BakeData>();
+
+			wireframeRenderer = new WireframeRenderer();
 
 			if (bakeData != null && !string.IsNullOrEmpty(activeScene.name))
 				baker = new Lightbaker(activeScene, bakeData, bakeSettings);
@@ -59,6 +73,8 @@ namespace Superluminal
 			Camera.onPostRender -= OnCameraPostRender;
 
 			EditorApplication.update -= Update;
+
+			wireframeRenderer.Dispose();
 
 			DestroyImmediate(bakeSettings);
 			bakeSettings = null;
@@ -133,6 +149,15 @@ namespace Superluminal
 				}
 
 				EditorGUILayout.EndHorizontal();
+				
+				if (previewEnabled)
+				{
+					EditorGUILayout.BeginHorizontal();
+
+					previewMode = (PreviewMode) EditorGUILayout.EnumPopup("Preview mode", previewMode);
+
+					EditorGUILayout.EndHorizontal();
+				}
 
 				GUI.enabled = wasEnabled;
 			}
@@ -316,13 +341,19 @@ namespace Superluminal
 					Material material = submesh.bakedMaterial != null ? submesh.bakedMaterial : submesh.originalMaterial;
 					for (int passIdx = 0; passIdx < material.passCount; ++passIdx)
 					{
-						material.SetPass(passIdx);
-						Graphics.DrawMeshNow(target.bakedMesh, target.renderer.transform.localToWorldMatrix, submesh.idx);
+						if (previewMode == PreviewMode.SHADED || previewMode == PreviewMode.SHADED_WIREFRAME)
+						{
+							material.SetPass(passIdx);
+							Graphics.DrawMeshNow(target.bakedMesh, target.renderer.transform.localToWorldMatrix, submesh.idx);
+						}
+
+						if (previewMode == PreviewMode.SHADED_WIREFRAME || previewMode == PreviewMode.WIREFRAME)
+							wireframeRenderer.DrawWireframe(target.bakedMesh, submesh.idx, target.renderer.transform.localToWorldMatrix, Color.black);
 					}
 				}
 			}
 		}
-
+		
 		private void OnSceneGUI(SceneView sceneView)
 		{
 			if (baker != null && drawKDTree && baker.Backend is RaytracerBackend)

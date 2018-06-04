@@ -4,6 +4,14 @@ namespace Superluminal
 {
 	public static class SampleUtil
 	{
+
+		public static void UniformBarycentric(Vector2 r, out Vector3 v)
+		{
+			float sqrtX = FloatMath.Sqrt(r.x);
+
+			v = new Vector3(1 - sqrtX, sqrtX * (1 - r.y), sqrtX * r.y);
+		}
+
 		public static void UniformHemisphere(Vector2 r, out float phi, out float theta, out float pdf)
 		{
 			phi = 2 * FloatMath.PI * r.y;

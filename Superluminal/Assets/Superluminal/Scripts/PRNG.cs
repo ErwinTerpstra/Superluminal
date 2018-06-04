@@ -1,5 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+
+using UnityEngine;
+
+using DateTime = System.DateTime;
 
 namespace Superluminal
 {
@@ -31,6 +34,11 @@ namespace Superluminal
 		public float NextFloat()
 		{
 			return Next() / (float) uint.MaxValue;
+		}
+
+		public Vector2 NextVector2()
+		{
+			return new Vector2(NextFloat(), NextFloat());
 		}
 
 		public static unsafe uint SeedFromTime()

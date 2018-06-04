@@ -1,6 +1,9 @@
 ﻿
 namespace Superluminal
 {
+	/// <summary>
+	/// Static math library aimed at float functions.
+	/// </summary>
 	public static class FloatMath
 	{
 		public const float PI = (float)System.Math.PI;

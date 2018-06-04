@@ -45,7 +45,7 @@
 			{
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
-				o.color = v.color * _Color;
+				o.color = 2.0 * v.color * _Color;
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 
 				UNITY_TRANSFER_FOG(o, o.vertex);
