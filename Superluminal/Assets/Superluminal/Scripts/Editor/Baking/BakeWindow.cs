@@ -145,7 +145,7 @@ namespace Superluminal
 					else
 						DisablePreview();
 
-					SceneView.RepaintAll();
+					UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
 				}
 
 				EditorGUILayout.EndHorizontal();
@@ -154,7 +154,12 @@ namespace Superluminal
 				{
 					EditorGUILayout.BeginHorizontal();
 
+					EditorGUI.BeginChangeCheck();
+
 					previewMode = (PreviewMode) EditorGUILayout.EnumPopup("Preview mode", previewMode);
+
+					if (EditorGUI.EndChangeCheck())
+						UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
 
 					EditorGUILayout.EndHorizontal();
 				}

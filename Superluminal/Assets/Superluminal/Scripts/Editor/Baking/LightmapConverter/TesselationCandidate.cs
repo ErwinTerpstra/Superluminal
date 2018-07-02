@@ -3,14 +3,18 @@ using System.Collections;
 
 namespace Superluminal
 {
-	public struct TesselationCandidate
+
+	public class TesselationCandidate
 	{
-		public int submeshIndex;
+		public readonly Edge edge;
 
-		public int indexOffset;
-
-		public Vector3 barycentricCoords;
+		public float t;
 
 		public float error;
+
+		public TesselationCandidate(Edge edge)
+		{
+			this.edge = edge;
+		}
 	}
 }

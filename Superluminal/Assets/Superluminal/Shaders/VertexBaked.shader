@@ -30,8 +30,8 @@
 			struct v2f
 			{
 				float4 vertex : SV_POSITION;
-				float4 color : COLOR;
 				float2 uv : TEXCOORD0;
+				float4 irradiance : TEXCOORD1;
 
 				UNITY_FOG_COORDS(1)
 			};
@@ -45,7 +45,11 @@
 			{
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
-				o.color = 2.0 * v.color * _Color;
+
+				float irradiance = v.color;//pow(v.color, 1.0 / 2.2);
+				//irradiance *= 2;
+
+				o.irradiance = irradiance * _Color;
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);
 
 				UNITY_TRANSFER_FOG(o, o.vertex);
@@ -56,7 +60,7 @@
 			fixed4 frag (v2f i) : SV_Target
 			{
 				// Sample the texture
-				fixed4 color = tex2D(_MainTex, i.uv) * i.color;
+				fixed4 color = tex2D(_MainTex, i.uv) * i.irradiance;
 			
 				// Apply fog
 				UNITY_APPLY_FOG(i.fogCoord, color);

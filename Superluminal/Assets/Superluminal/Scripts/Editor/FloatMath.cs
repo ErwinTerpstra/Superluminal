@@ -16,6 +16,7 @@ namespace Superluminal
 
 		public static float Abs(float x) { return System.Math.Abs(x); }
 		public static float Sqrt(float x) { return (float)System.Math.Sqrt(x); }
+		public static float Pow(float x, float y) { return (float)System.Math.Pow(x, y); }
 
 		public static float Sin(float x) { return (float)System.Math.Sin(x); }
 		public static float Cos(float x) { return (float)System.Math.Cos(x); }

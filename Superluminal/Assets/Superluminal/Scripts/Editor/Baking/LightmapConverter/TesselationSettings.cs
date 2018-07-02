@@ -10,6 +10,6 @@ namespace Superluminal
 
 		public float maxTesselationFactor = 5.0f;
 
-		public int candidatesPerTriangle = 5;
+		public int edgeOptimizeSteps = 20;
 	}
 }
