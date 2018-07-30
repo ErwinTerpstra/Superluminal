@@ -63,7 +63,6 @@ namespace Superluminal
 				// Select the best candidate for tesselation
 				int candidateIdx = candidates.Count - 1;
 				TesselationCandidate candidate = candidates[candidateIdx];
-				candidates.RemoveAt(candidateIdx);
 
 				// If the error of this candidate is below the threshold, we are finished
 				if (candidate.error < settings.minimumError)
@@ -76,12 +75,242 @@ namespace Superluminal
 			// Store the changes to the mesh
 			meshEditor.Store();
 		}
-		
+
 		/// <summary>
 		/// Performs tesselation by adding the candidate vertex somewhere on the candidate edge. This removes each triangle that uses this edge and adds two new ones.
 		/// </summary>
 		/// <param name="candidate"></param>
 		private void PerformTesselation(TesselationCandidate candidate)
+		{
+			Queue<TesselationCandidate> candidateQueue = new Queue<TesselationCandidate>();
+			candidateQueue.Enqueue(candidate);
+
+			while (candidateQueue.Count > 0)
+			{
+				candidate = candidateQueue.Dequeue();
+				candidates.Remove(candidate);
+				SplitTrianglesUsingCandidate(candidate, candidateQueue);
+			}
+
+			SortCandidates();
+		}
+
+		private void SplitTrianglesUsingCandidate(TesselationCandidate candidateA, Queue<TesselationCandidate> candidateQueue)
+		{
+			SplitCandidate(candidateA);
+
+			// Triangle indices
+			int[] ti = new int[3];
+
+			Edge splitEdge = candidateA.edge;
+
+			// Iterate through all submeshes and find triangles that use this edge
+			for (int submeshIdx = 0; submeshIdx < meshEditor.indices.Count; ++submeshIdx)
+			{
+				List<int> indices = meshEditor.indices[submeshIdx];
+				int indexCount = indices.Count;
+
+				// Perform two steps, first with the original edge, then with the edge indices inverted.
+				// This makes sure triangles that don't face the same direction as the original edge, but do use the same vertices as the edge, are also handled
+				for (int step = 0; step < 2; ++step)
+				{
+					for (int indexOffset = 0; indexOffset < indexCount;)
+					{
+						ti[0] = indices[indexOffset + 0];
+						ti[1] = indices[indexOffset + 1];
+						ti[2] = indices[indexOffset + 2];
+
+						if (!RotateTriangleToMatchEdge(ti, splitEdge))
+						{
+							indexOffset += 3;
+							continue;
+						}
+
+						// This triangle uses the split edge, remove it
+						indices.RemoveAt(indexOffset + 2);
+						indices.RemoveAt(indexOffset + 1);
+						indices.RemoveAt(indexOffset + 0);
+
+						indexCount -= 3;
+
+						// Find the candidates for the opposing edges, so that we can check their error values
+						TesselationCandidate candidateB = FindCandidate(new Edge(ti[1], ti[2]));
+						TesselationCandidate candidateC = FindCandidate(new Edge(ti[2], ti[0]));
+
+						// Decide if we want to split the opposite edges
+						// This is done by checking if their error is comparable
+						bool splitB = candidateB.error >= candidateA.error * 0.2f;
+						bool splitC = candidateC.error >= candidateA.error * 0.2f;
+
+						if (splitB && splitC)
+						{
+							// Split both opposing edges, create four triangles
+							SplitCandidate(candidateB);
+							SplitCandidate(candidateC);
+
+							if (!candidateQueue.Contains(candidateB))
+								candidateQueue.Enqueue(candidateB);
+
+							if (!candidateQueue.Contains(candidateC))
+								candidateQueue.Enqueue(candidateC);
+
+							AddTriangle(submeshIdx, ti[0], candidateA.vertexIndex, candidateC.vertexIndex);
+							AddTriangle(submeshIdx, ti[1], candidateB.vertexIndex, candidateA.vertexIndex);
+							AddTriangle(submeshIdx, ti[2], candidateC.vertexIndex, candidateB.vertexIndex);
+							AddTriangle(submeshIdx, candidateA.vertexIndex, candidateB.vertexIndex, candidateC.vertexIndex);
+						}
+						else if (splitB)
+						{
+							// Split only one of the opposing edges, create three triangles
+							SplitCandidate(candidateB);
+
+							if (!candidateQueue.Contains(candidateB))
+								candidateQueue.Enqueue(candidateB);
+
+							AddTriangle(submeshIdx, candidateA.vertexIndex, ti[1], candidateB.vertexIndex);
+
+							// Note: these two triangles can be replaced to use ti[2] as a shared base, which might lead to more area-consistent triangles
+							AddTriangle(submeshIdx, ti[0], candidateA.vertexIndex, candidateB.vertexIndex);
+							AddTriangle(submeshIdx, ti[0], candidateB.vertexIndex, ti[2]);
+						}
+						else if (splitC)
+						{
+							// Split only one of the opposing edges, create three triangles
+							SplitCandidate(candidateC);
+
+							if (!candidateQueue.Contains(candidateC))
+								candidateQueue.Enqueue(candidateC);
+
+							AddTriangle(submeshIdx, ti[0], candidateA.vertexIndex, candidateC.vertexIndex);
+
+							// Note: these two triangles can be replaced to use ti[2] as a shared base, which might lead to more area-consistent triangles
+							AddTriangle(submeshIdx, ti[1], candidateC.vertexIndex, candidateA.vertexIndex);
+							AddTriangle(submeshIdx, ti[1], ti[2], candidateC.vertexIndex);
+						}
+						else
+						{
+							// Don't split the opposing edges, create two triangles
+							AddTriangle(submeshIdx, ti[0], candidateA.vertexIndex, ti[2]);
+							AddTriangle(submeshIdx, candidateA.vertexIndex, ti[1], ti[2]);
+						}
+
+					}
+
+					splitEdge = new Edge(splitEdge.index1, splitEdge.index0);
+				}
+			}
+		}
+
+		private void CheckForSplitCandidates()
+		{ 
+}
+
+		private void SplitCandidate(TesselationCandidate candidate)
+		{
+			if (candidate.IsSplit)
+				return;
+
+			// Add the new vertex
+			candidate.vertexIndex = SplitEdge(candidate.edge, candidate.t);
+		}
+
+		private void AddTriangle(int submeshIndex, int i0, int i1, int i2)
+		{
+			List<int> indices = meshEditor.indices[submeshIndex];
+			indices.Add(i0);
+			indices.Add(i1);
+			indices.Add(i2);
+
+			AddCandidate(i0, i1);
+			AddCandidate(i1, i2);
+			AddCandidate(i2, i0);
+		}
+
+		private bool RotateTriangleToMatchEdge(int[] indices, Edge edge)
+		{
+			if (indices[0] == edge.index0)
+			{
+				if (indices[1] == edge.index1)
+					return true;
+
+				return false;
+			}
+
+			if (indices[1] == edge.index0)
+			{
+				if (indices[2] == edge.index1)
+				{
+					RotateTriangleCCW(indices);
+					return true;
+				}
+
+				return false;
+			}
+
+			if (indices[2] == edge.index0)
+			{
+				if (indices[0] == edge.index1)
+				{
+					RotateTriangleCW(indices);
+					return true;
+				}
+
+				return false;
+			}
+
+			return false;
+		}
+
+		private void RotateTriangleCW(int[] indices)
+		{
+			int tmp = indices[2];
+			indices[2] = indices[1];
+			indices[1] = indices[0];
+			indices[0] = tmp;
+
+		}
+		private void RotateTriangleCCW(int[] indices)
+		{
+			int tmp = indices[0];
+			indices[0] = indices[1];
+			indices[1] = indices[2];
+			indices[2] = tmp;
+		}
+
+		private bool FindOpposingEdges(Edge edge, Edge[] triangleEdges, out Edge a, out Edge b)
+		{
+			if (edge == triangleEdges[0])
+			{
+				a = triangleEdges[1];
+				b = triangleEdges[2];
+				return true;
+			}
+
+			if (edge == triangleEdges[1])
+			{
+				a = triangleEdges[0];
+				b = triangleEdges[2];
+				return true;
+			}
+
+			if (edge == triangleEdges[2])
+			{
+				a = triangleEdges[0];
+				b = triangleEdges[1];
+				return true;
+			}
+
+			a = new Edge();
+			b = new Edge();
+
+			return false;
+		}
+
+		/// <summary>
+		/// Performs tesselation by adding the candidate vertex somewhere on the candidate edge. This removes each triangle that uses this edge and adds two new ones.
+		/// </summary>
+		/// <param name="candidate"></param>
+		private void PerformTesselationWithTriangleSplit(TesselationCandidate candidate)
 		{
 			// Add the new vertex
 			int i2 = SplitEdge(candidate.edge, candidate.t);
@@ -89,7 +318,7 @@ namespace Superluminal
 			// Retrieve the indices for this candidate
 			int i0 = candidate.edge.index0;
 			int i1 = candidate.edge.index1;
-			
+
 			// Iterate through all submeshes and find triangles that use this edge
 			for (int submeshIdx = 0; submeshIdx < meshEditor.indices.Count; ++submeshIdx)
 			{
@@ -100,9 +329,9 @@ namespace Superluminal
 					// Check this triangle twice, the second time with the edge indices reversed
 					for (int i = 0; i < 2; ++i)
 					{
-						SplitEdgeIfIndicesMatch(submeshIdx, indexOffset + 0, indexOffset + 1, indexOffset + 2, i0, i1, i2);
-						SplitEdgeIfIndicesMatch(submeshIdx, indexOffset + 1, indexOffset + 2, indexOffset + 0, i0, i1, i2);
-						SplitEdgeIfIndicesMatch(submeshIdx, indexOffset + 2, indexOffset + 0, indexOffset + 1, i0, i1, i2);
+						SplitTriangleIfFirstEdgeMatches(submeshIdx, indexOffset + 0, indexOffset + 1, indexOffset + 2, i0, i1, i2);
+						SplitTriangleIfFirstEdgeMatches(submeshIdx, indexOffset + 1, indexOffset + 2, indexOffset + 0, i0, i1, i2);
+						SplitTriangleIfFirstEdgeMatches(submeshIdx, indexOffset + 2, indexOffset + 0, indexOffset + 1, i0, i1, i2);
 
 						Swap(ref i0, ref i1);
 					}
@@ -113,7 +342,7 @@ namespace Superluminal
 			SortCandidates();
 		}
 		
-		private void SplitEdgeIfIndicesMatch(int submeshIdx, int indexOffset0, int indexOffset1, int indexOffset2, int edgeIndex0, int edgeIndex1, int newIndex)
+		private void SplitTriangleIfFirstEdgeMatches(int submeshIdx, int indexOffset0, int indexOffset1, int indexOffset2, int edgeIndex0, int edgeIndex1, int newIndex)
 		{
 			List<int> indices = meshEditor.indices[submeshIdx];
 

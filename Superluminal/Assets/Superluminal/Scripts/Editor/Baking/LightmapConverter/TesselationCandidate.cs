@@ -12,9 +12,18 @@ namespace Superluminal
 
 		public float error;
 
+		public int vertexIndex;
+
 		public TesselationCandidate(Edge edge)
 		{
 			this.edge = edge;
+
+			vertexIndex = -1;
+		}
+
+		public bool IsSplit
+		{
+			get { return vertexIndex >= 0; }
 		}
 	}
 }
