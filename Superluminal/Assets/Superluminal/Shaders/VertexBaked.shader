@@ -46,8 +46,7 @@
 				v2f o;
 				o.vertex = UnityObjectToClipPos(v.vertex);
 
-				float irradiance = v.color;//pow(v.color, 1.0 / 2.2);
-				//irradiance *= 2;
+				half4 irradiance = v.color;
 
 				o.irradiance = irradiance * _Color;
 				o.uv = TRANSFORM_TEX(v.uv, _MainTex);

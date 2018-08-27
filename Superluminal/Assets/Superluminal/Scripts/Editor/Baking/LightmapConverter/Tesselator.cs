@@ -7,11 +7,10 @@ namespace Superluminal
 {
 	public class Tesselator
 	{
+
 		private const float ldrMultiplier = 1.0f;
 		private const float gammaToLinear = 2.2f;
 		private const float linearToGamma = 1.0f / gammaToLinear;
-
-		private static readonly Vector3 BARYCENTER = new Vector3(1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f);
 
 		private BakeTarget target;
 
@@ -56,46 +55,49 @@ namespace Superluminal
 		{
 			AddCandidatesForAllEdges();
 
-			int maxVertexCount = (int) (meshEditor.vertices.Count * settings.maxTesselationFactor);
+			int originalVertexCount = meshEditor.vertices.Count;
+			int maxVertexCount = (int) (originalVertexCount * settings.maxTesselationFactor);
 
-			while (meshEditor.vertices.Count < maxVertexCount)
+			Queue<TesselationCandidate> candidateQueue = new Queue<TesselationCandidate>();
+
+			while (true)
 			{
+				bool withinVertexLimit = meshEditor.vertices.Count < maxVertexCount;
+
+				// Check if we need to start with a new candidate
+				if (candidateQueue.Count == 0)
+				{
+					if (!withinVertexLimit)
+						break;
+
+					SortCandidates();
+
+					TesselationCandidate bestCandidate = candidates[candidates.Count - 1];
+					
+					// If the error of this candidate is below the threshold, we are finished
+					if (bestCandidate.error < settings.minimumError)
+						break;
+
+					candidateQueue.Enqueue(bestCandidate);
+				}
+
 				// Select the best candidate for tesselation
-				int candidateIdx = candidates.Count - 1;
-				TesselationCandidate candidate = candidates[candidateIdx];
+				TesselationCandidate candidate = candidateQueue.Dequeue();
+				candidates.Remove(candidate);
 
-				// If the error of this candidate is below the threshold, we are finished
-				if (candidate.error < settings.minimumError)
-					break;
-
-				// Otherwise, tesselate the mesh with this candidate
-				PerformTesselation(candidate);
+				// Tesselate the mesh with this candidate
+				SplitTrianglesUsingCandidate(candidate, settings.allowRecursiveSplitting && withinVertexLimit, candidateQueue);
 			}
+		}
+
+		public void StoreMesh()
+		{
 
 			// Store the changes to the mesh
 			meshEditor.Store();
 		}
-
-		/// <summary>
-		/// Performs tesselation by adding the candidate vertex somewhere on the candidate edge. This removes each triangle that uses this edge and adds two new ones.
-		/// </summary>
-		/// <param name="candidate"></param>
-		private void PerformTesselation(TesselationCandidate candidate)
-		{
-			Queue<TesselationCandidate> candidateQueue = new Queue<TesselationCandidate>();
-			candidateQueue.Enqueue(candidate);
-
-			while (candidateQueue.Count > 0)
-			{
-				candidate = candidateQueue.Dequeue();
-				candidates.Remove(candidate);
-				SplitTrianglesUsingCandidate(candidate, candidateQueue);
-			}
-
-			SortCandidates();
-		}
-
-		private void SplitTrianglesUsingCandidate(TesselationCandidate candidateA, Queue<TesselationCandidate> candidateQueue)
+		
+		private void SplitTrianglesUsingCandidate(TesselationCandidate candidateA, bool allowRecursiveSplitting, Queue<TesselationCandidate> candidateQueue)
 		{
 			SplitCandidate(candidateA);
 
@@ -139,8 +141,8 @@ namespace Superluminal
 
 						// Decide if we want to split the opposite edges
 						// This is done by checking if their error is comparable
-						bool splitB = candidateB.error >= candidateA.error * 0.2f;
-						bool splitC = candidateC.error >= candidateA.error * 0.2f;
+						bool splitB = allowRecursiveSplitting && candidateB.error >= settings.minimumError && candidateB.error >= (candidateA.error * settings.minimumErrorFactor);
+						bool splitC = allowRecursiveSplitting && candidateC.error >= settings.minimumError && candidateC.error >= (candidateA.error * settings.minimumErrorFactor);
 
 						if (splitB && splitC)
 						{
@@ -201,9 +203,6 @@ namespace Superluminal
 			}
 		}
 
-		private void CheckForSplitCandidates()
-		{ 
-}
 
 		private void SplitCandidate(TesselationCandidate candidate)
 		{
@@ -307,67 +306,7 @@ namespace Superluminal
 		}
 
 		/// <summary>
-		/// Performs tesselation by adding the candidate vertex somewhere on the candidate edge. This removes each triangle that uses this edge and adds two new ones.
-		/// </summary>
-		/// <param name="candidate"></param>
-		private void PerformTesselationWithTriangleSplit(TesselationCandidate candidate)
-		{
-			// Add the new vertex
-			int i2 = SplitEdge(candidate.edge, candidate.t);
-
-			// Retrieve the indices for this candidate
-			int i0 = candidate.edge.index0;
-			int i1 = candidate.edge.index1;
-
-			// Iterate through all submeshes and find triangles that use this edge
-			for (int submeshIdx = 0; submeshIdx < meshEditor.indices.Count; ++submeshIdx)
-			{
-				List<int> indices = meshEditor.indices[submeshIdx];
-
-				for (int indexOffset = 0; indexOffset < indices.Count; indexOffset += 3)
-				{
-					// Check this triangle twice, the second time with the edge indices reversed
-					for (int i = 0; i < 2; ++i)
-					{
-						SplitTriangleIfFirstEdgeMatches(submeshIdx, indexOffset + 0, indexOffset + 1, indexOffset + 2, i0, i1, i2);
-						SplitTriangleIfFirstEdgeMatches(submeshIdx, indexOffset + 1, indexOffset + 2, indexOffset + 0, i0, i1, i2);
-						SplitTriangleIfFirstEdgeMatches(submeshIdx, indexOffset + 2, indexOffset + 0, indexOffset + 1, i0, i1, i2);
-
-						Swap(ref i0, ref i1);
-					}
-				}
-
-			}
-
-			SortCandidates();
-		}
-		
-		private void SplitTriangleIfFirstEdgeMatches(int submeshIdx, int indexOffset0, int indexOffset1, int indexOffset2, int edgeIndex0, int edgeIndex1, int newIndex)
-		{
-			List<int> indices = meshEditor.indices[submeshIdx];
-
-			int t0 = indices[indexOffset0];
-			int t1 = indices[indexOffset1];
-			int t2 = indices[indexOffset2];
-
-			if (t0 == edgeIndex0 && t1 == edgeIndex1)
-			{
-				indices[indexOffset1] = newIndex;
-
-				indices.Add(newIndex);
-				indices.Add(t1);
-				indices.Add(t2);
-
-				AddCandidate(t0, newIndex);
-				AddCandidate(newIndex, t1);
-				AddCandidate(t2, newIndex);
-			}
-			
-
-		}
-		
-		/// <summary>
-		/// Adds a vertex to the mesh is at the given edge
+		/// Adds a vertex to the mesh at the given edge
 		/// </summary>
 		/// <param name="edge"></param>
 		/// <returns>The index of the added vertex</returns>
@@ -456,32 +395,65 @@ namespace Superluminal
 			candidate = new TesselationCandidate(edge);
 			candidates.Add(candidate);
 
-			UpdateCandidate(candidate);
+			OptimizeCandidate(candidate);
 		}
 
-		private void UpdateCandidate(int index0, int index1)
+		private void OptimizeCandidate(TesselationCandidate candidate)
 		{
-			TesselationCandidate candidate = FindCandidate(new Edge(index0, index1));
+			float stepSize = 1.0f / (settings.edgeOptimizeSteps + 1);
+			float integratedError = 0.0f;
+			float highestError = 0.0f;
 
-			if (candidate != null)
-				UpdateCandidate(candidate);
-		}
-
-		private void UpdateCandidate(TesselationCandidate candidate)
-		{			
-			for (int step = 0; step < settings.edgeOptimizeSteps; ++step)
+			// Find the point with the highest local error on the edge
+			for (int step = 1; step <= settings.edgeOptimizeSteps; ++step)
 			{
-				float t = step / (float) (settings.edgeOptimizeSteps - 1);
+				float t = step * stepSize;
 				float error = CalculateError(candidate.edge, t);
 
-				if (error > candidate.error)
+				if (error > highestError)
 				{
 					candidate.t = t;
-					candidate.error = error;
+					highestError = error;
 				}
+
+				integratedError += error * stepSize;
 			}
-			
+
+			Vector3 v0, v1, v2;
+
+			// Calculate the length of the edge
+			v0 = meshEditor.vertices[candidate.edge.index0];
+			v1 = meshEditor.vertices[candidate.edge.index1];
+
+			v0 = target.renderer.transform.TransformPoint(v0);
+			v1 = target.renderer.transform.TransformPoint(v1);
+
+			float length = Vector3.Distance(v0, v1);
+
+			// Calculate the total area of all triangles using this edge
+			float totalArea = 0.0f;
+			foreach (IndexedTriangle triangle in FindTrianglesUsingEdge(candidate.edge, true))
+			{
+				// Retrieve the vertices of this triangle
+				v0 = meshEditor.vertices[triangle.i0];
+				v1 = meshEditor.vertices[triangle.i1];
+				v2 = meshEditor.vertices[triangle.i2];
+
+				// Transform the vertices to world space
+				v0 = target.renderer.transform.TransformPoint(v0);
+				v1 = target.renderer.transform.TransformPoint(v1);
+				v2 = target.renderer.transform.TransformPoint(v2);
+
+				// Calculate the area of this triangle
+				totalArea += CalculateArea(v0, v1, v2);
+			}
+
+			float areaError = highestError * Mathf.Sqrt(totalArea);
+			float lengthError = integratedError * length;
+
+			candidate.error = Mathf.Max(areaError, lengthError);
 		}
+		private int areaErrors, lengthErrors;
 
 		private TesselationCandidate FindCandidate(Edge edge)
 		{
@@ -492,6 +464,40 @@ namespace Superluminal
 			}
 
 			return null;
+		}
+
+		private IEnumerable<IndexedTriangle> FindTrianglesUsingEdge(Edge edge, bool includeReversed)
+		{
+			for (int submeshIdx = 0; submeshIdx < meshEditor.indices.Count; ++submeshIdx)
+			{
+				List<int> indices = meshEditor.indices[submeshIdx];
+
+				for (int indexOffset = 0; indexOffset < indices.Count; indexOffset += 3)
+				{
+					int i0 = indices[indexOffset + 0];
+					int i1 = indices[indexOffset + 1];
+					int i2 = indices[indexOffset + 2];
+
+					bool match = false;
+
+					if (edge.index0 == i0)
+						match = edge.index1 == i1 || (edge.index1 == i2 && includeReversed);
+					else if (edge.index0 == i1)
+						match = edge.index1 == i2 || (edge.index1 == i0 && includeReversed);
+					else if (edge.index0 == i2)
+						match = edge.index1 == i0 || (edge.index1 == i1 && includeReversed);
+
+					if (match)
+					{
+						yield return new IndexedTriangle()
+						{
+							i0 = i0,
+							i1 = i1,
+							i2 = i2
+						};
+					}
+				}
+			}
 		}
 
 		private void SortCandidates()
@@ -537,7 +543,7 @@ namespace Superluminal
 			lightmapUV.x = (scaleOffset.x * lightmapUV.x + scaleOffset.z);
 			lightmapUV.y = (scaleOffset.y * lightmapUV.y + scaleOffset.w);
 			
-			Color lightmapColor = lightmapSampler.SamplePoint(lightmapUV);
+			Color lightmapColor = lightmapSampler.SampleBilinear(lightmapUV);
 
 			string lightmapAssetPath = AssetDatabase.GetAssetPath(lightmapSampler.Texture);
 			TextureImporter lightmapImporter = AssetImporter.GetAtPath(lightmapAssetPath) as TextureImporter;
@@ -567,30 +573,9 @@ namespace Superluminal
 			// Retrieve the vertex colors of this candidate
 			Color c0 = DecodeVertexColor(meshEditor.colors[i0]);
 			Color c1 = DecodeVertexColor(meshEditor.colors[i1]);
-
-			// Interpolate the lightmap UV at the candidate position
-			Vector2 interpolatedUV = Vector2.Lerp(uv0, uv1, t);
-
-			// Sample the lightmap to get the desired color at the candidate
-			Color desiredColor = SampleLightmap(interpolatedUV);
-
+			
 			// Calculate the error as the difference between the interpolated color and the desired color
-			float currentError = CalculateError(c0, c1, uv0, uv1, t);
-
-			// Retrieve the vertices of this candidate
-			Vector3 v0 = meshEditor.vertices[i0];
-			Vector3 v1 = meshEditor.vertices[i1];
-
-			// Transform the vertices to world space
-			v0 = target.renderer.transform.TransformPoint(v0);
-			v1 = target.renderer.transform.TransformPoint(v1);
-
-			// Calculate the edge length
-			// TODO: use the area of all adjacent triangles
-			float length = Vector3.Distance(v0, v1);
-			currentError *= length;
-
-			return currentError;
+			return CalculateError(c0, c1, uv0, uv1, t);
 		}
 
 		private float CalculateError(Color c0, Color c1, Vector2 uv0, Vector2 uv1, float t)
@@ -607,25 +592,11 @@ namespace Superluminal
 			// Calculate the error as the difference between the interpolated color and the desired color
 			return FloatMath.Abs(CalculateColorIntensity(desiredColor) - CalculateColorIntensity(interpolatedColor));
 		}
-
-		private float CalculateError(Color c0, Color c1, Color c2, Vector2 uv0, Vector2 uv1, Vector2 uv2, Vector3 barycentricCoords)
-		{
-			// Interpolate the lightmap UV at the given position
-			Vector2 interpolatedUV = Interpolate(uv0, uv1, uv2, barycentricCoords);
-
-			// Sample the lightmap to get the desired color at the candidate
-			Color desiredColor = SampleLightmap(interpolatedUV);
-
-			// Interpolate the current vertex colors to calculate what would be rendered with the current vertex colors
-			Color interpolatedColor = Interpolate(c0, c1, c2, barycentricCoords);
-			
-			// Calculate the error as the difference between the interpolated color and the desired color
-			return FloatMath.Abs(CalculateColorIntensity(desiredColor) - CalculateColorIntensity(interpolatedColor));
-		}
-
+		
 		private float CalculateColorIntensity(Color c)
 		{
-			return c.r + c.g + c.b;
+			c = c.gamma;
+			return c.r * 0.21f + c.g * 0.72f + c.b * 0.07f;
 		}
 
 		private float CalculateArea(Vector3 v0, Vector3 v1, Vector3 v2)
@@ -638,8 +609,12 @@ namespace Superluminal
 				return 0.0f;
 
 			float s = 0.5f * (a + b + c);
+			float a2 = s * (s - a) * (s - b) * (s - c);
 
-			return FloatMath.Sqrt(s * (s - a) * (s - b) * (s - c));
+			if (a2 <= 0.0f)
+				return 0.0f;
+
+			return FloatMath.Sqrt(a2);
 		}
 
 		private void Sort(ref int a, ref int b)

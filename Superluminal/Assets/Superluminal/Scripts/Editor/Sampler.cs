@@ -47,16 +47,16 @@ namespace Superluminal
 
 		public Color SamplePoint(Vector2 uv)
 		{
-			float x = uv.x * width;
-			float y = uv.y * height;
+			float x = uv.x * (width - 1);
+			float y = uv.y * (height - 1);
 
 			return GetPixel(FloatMath.RoundToInt(x), FloatMath.RoundToInt(y));
 		}
 
 		public Color SampleBilinear(Vector2 uv)
 		{
-			float x = uv.x * width;
-			float y = uv.y * height;
+			float x = uv.x * (width - 1);
+			float y = uv.y * (height - 1);
 
 			int intX = (int)x;
 			int intY = (int)y;

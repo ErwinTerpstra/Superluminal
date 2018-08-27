@@ -334,6 +334,11 @@ namespace Superluminal
 
 		private void DrawPreview(Camera camera)
 		{
+			if (camera.name == "Preview Scene Camera")
+				return;
+
+			bool isSceneCamera = camera.name == "SceneCamera";
+
 			foreach (BakeTarget target in baker.BakeTargets)
 			{
 				if (target.bakedMesh == null || target.renderer == null)
@@ -341,19 +346,20 @@ namespace Superluminal
 
 				foreach (BakeTargetSubmesh submesh in target.submeshes)
 				{
-					//Graphics.DrawMesh(target.bakedMesh, target.renderer.transform.localToWorldMatrix, submesh.material, 0, camera, submesh.idx);
-
 					Material material = submesh.bakedMaterial != null ? submesh.bakedMaterial : submesh.originalMaterial;
 					for (int passIdx = 0; passIdx < material.passCount; ++passIdx)
 					{
-						if (previewMode == PreviewMode.SHADED || previewMode == PreviewMode.SHADED_WIREFRAME)
+						if (previewMode == PreviewMode.SHADED || previewMode == PreviewMode.SHADED_WIREFRAME || !isSceneCamera)
 						{
 							material.SetPass(passIdx);
 							Graphics.DrawMeshNow(target.bakedMesh, target.renderer.transform.localToWorldMatrix, submesh.idx);
 						}
 
-						if (previewMode == PreviewMode.SHADED_WIREFRAME || previewMode == PreviewMode.WIREFRAME)
-							wireframeRenderer.DrawWireframe(target.bakedMesh, submesh.idx, target.renderer.transform.localToWorldMatrix, Color.black);
+						if (isSceneCamera)
+						{
+							if (previewMode == PreviewMode.SHADED_WIREFRAME || previewMode == PreviewMode.WIREFRAME)
+								wireframeRenderer.DrawWireframe(target.bakedMesh, submesh.idx, target.renderer.transform.localToWorldMatrix, Color.black);
+						}
 					}
 				}
 			}
