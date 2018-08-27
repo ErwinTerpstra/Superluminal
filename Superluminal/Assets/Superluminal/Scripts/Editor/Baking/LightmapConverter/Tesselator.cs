@@ -55,8 +55,8 @@ namespace Superluminal
 		{
 			AddCandidatesForAllEdges();
 
-			int originalVertexCount = meshEditor.vertices.Count;
-			int maxVertexCount = (int) (originalVertexCount * settings.maxTesselationFactor);
+			float totalArea = CalculateTotalMeshArea();
+			int maxVertexCount = (int) (totalArea * settings.maxVertexDensity);
 
 			Queue<TesselationCandidate> candidateQueue = new Queue<TesselationCandidate>();
 
@@ -591,14 +591,52 @@ namespace Superluminal
 			// Calculate the error as the difference between the interpolated color and the desired color
 			return FloatMath.Abs(CalculateColorIntensity(desiredColor) - CalculateColorIntensity(interpolatedColor));
 		}
-		
-		private float CalculateColorIntensity(Color c)
+
+		private float CalculateTotalMeshArea()
+		{
+			float totalArea = 0.0f;
+
+			for (int submeshIdx = 0; submeshIdx < meshEditor.indices.Count; ++submeshIdx)
+			{
+				List<int> indices = meshEditor.indices[submeshIdx];
+
+				for (int indexOffset = 0; indexOffset < indices.Count; indexOffset += 3)
+				{
+					// Retrieve the indices of this triangle
+					totalArea += CalculateArea(new IndexedTriangle()
+					{
+						i0 = indices[indexOffset + 0],
+						i1 = indices[indexOffset + 1],
+						i2 = indices[indexOffset + 2],
+					});
+				}
+			}
+
+			return totalArea;
+		}
+
+		private float CalculateArea(IndexedTriangle triangle)
+		{
+			// Retrieve the vertices of this triangle
+			Vector3 v0 = meshEditor.vertices[triangle.i0];
+			Vector3 v1 = meshEditor.vertices[triangle.i1];
+			Vector3 v2 = meshEditor.vertices[triangle.i2];
+
+			// Transform the vertices to world space
+			v0 = target.renderer.transform.TransformPoint(v0);
+			v1 = target.renderer.transform.TransformPoint(v1);
+			v2 = target.renderer.transform.TransformPoint(v2);
+
+			return CalculateArea(v0, v1, v2);
+		}
+
+		private static float CalculateColorIntensity(Color c)
 		{
 			c = c.gamma;
 			return c.r * 0.21f + c.g * 0.72f + c.b * 0.07f;
 		}
 
-		private float CalculateArea(Vector3 v0, Vector3 v1, Vector3 v2)
+		private static float CalculateArea(Vector3 v0, Vector3 v1, Vector3 v2)
 		{
 			float a = (v1 - v0).magnitude;
 			float b = (v2 - v0).magnitude;
@@ -616,35 +654,35 @@ namespace Superluminal
 			return FloatMath.Sqrt(a2);
 		}
 
-		private void Sort(ref int a, ref int b)
+		private static void Sort(ref int a, ref int b)
 		{
 			if (b > a)
 				Swap(ref a, ref b);
 		}
 
-		private void Swap<T>(ref T a, ref T b)
+		private static void Swap<T>(ref T a, ref T b)
 		{
 			T tmp = a;
 			a = b;
 			b = tmp;
 		}
 
-		private Vector2 Interpolate(Vector2 a, Vector2 b, Vector2 c, Vector3 barycentric)
+		private static Vector2 Interpolate(Vector2 a, Vector2 b, Vector2 c, Vector3 barycentric)
 		{
 			return a * barycentric.x + b * barycentric.y + c * barycentric.z;
 		}
 
-		private Vector3 Interpolate(Vector3 a, Vector3 b, Vector3 c, Vector3 barycentric)
+		private static Vector3 Interpolate(Vector3 a, Vector3 b, Vector3 c, Vector3 barycentric)
 		{
 			return a * barycentric.x + b * barycentric.y + c * barycentric.z;
 		}
 
-		private Vector4 Interpolate(Vector4 a, Vector4 b, Vector4 c, Vector3 barycentric)
+		private static Vector4 Interpolate(Vector4 a, Vector4 b, Vector4 c, Vector3 barycentric)
 		{
 			return a * barycentric.x + b * barycentric.y + c * barycentric.z;
 		}
 
-		private Color Interpolate(Color a, Color b, Color c, Vector3 barycentric)
+		private static Color Interpolate(Color a, Color b, Color c, Vector3 barycentric)
 		{
 			return a * barycentric.x + b * barycentric.y + c * barycentric.z;
 		}
