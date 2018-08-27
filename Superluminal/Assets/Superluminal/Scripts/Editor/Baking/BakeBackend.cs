@@ -15,6 +15,8 @@ namespace Superluminal
 		
 		protected void CopyIndices(Mesh src, Mesh dst)
 		{
+			dst.subMeshCount = src.subMeshCount;
+
 			// Copy submesh indices to the new mesh
 			List<int> indices = new List<int>();
 			for (int submeshIdx = 0; submeshIdx < src.subMeshCount; ++submeshIdx)

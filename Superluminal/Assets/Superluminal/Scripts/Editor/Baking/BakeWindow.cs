@@ -55,11 +55,14 @@ namespace Superluminal
 			BakeData.Unloaded += OnBakeDataUnloaded;
 
 			SceneView.onSceneGUIDelegate += OnSceneGUI;
-			EditorApplication.playModeStateChanged += OnPlayModeChanged;
 
 			Camera.onPostRender += OnCameraPostRender;
 
 			EditorApplication.update += Update;
+
+#if UNITY_2017_1_OR_NEWER
+			EditorApplication.playModeStateChanged += OnPlayModeChanged;
+#endif
 		}
 
 		private void OnDisable()
@@ -68,11 +71,14 @@ namespace Superluminal
 			BakeData.Unloaded -= OnBakeDataUnloaded;
 
 			SceneView.onSceneGUIDelegate -= OnSceneGUI;
-			EditorApplication.playModeStateChanged -= OnPlayModeChanged;
 
 			Camera.onPostRender -= OnCameraPostRender;
 
 			EditorApplication.update -= Update;
+
+#if UNITY_2017_1_OR_NEWER
+			EditorApplication.playModeStateChanged -= OnPlayModeChanged;
+#endif
 
 			wireframeRenderer.Dispose();
 
@@ -400,10 +406,12 @@ namespace Superluminal
 			Repaint();
 		}
 
+#if UNITY_2017_1_OR_NEWER
 		private void OnPlayModeChanged(PlayModeStateChange stateChange)
 		{
 			Repaint();
 		}
+#endif
 
 		[MenuItem("Window/Superluminal")]
 		public static void OpenWindow()

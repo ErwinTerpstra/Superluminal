@@ -453,7 +453,6 @@ namespace Superluminal
 
 			candidate.error = Mathf.Max(areaError, lengthError);
 		}
-		private int areaErrors, lengthErrors;
 
 		private TesselationCandidate FindCandidate(Edge edge)
 		{

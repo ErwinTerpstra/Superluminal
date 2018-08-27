@@ -62,7 +62,13 @@ namespace Superluminal
 			CopyIndices(target.originalMesh, bakedMesh);
 
 			target.bakedMesh = bakedMesh;
-			
+
+			if (bakedMesh.uv.Length == 0 && bakedMesh.uv2.Length == 0)
+			{
+				Debug.LogError("Skipping mesh because it has no lightmap UVs", target.originalMesh);
+				return;
+			}
+
 			// Check if the target renderer has a valid lightmap
 			if (target.renderer.lightmapIndex == -1 || target.renderer.lightmapIndex >= 0xFFFE)
 			{
