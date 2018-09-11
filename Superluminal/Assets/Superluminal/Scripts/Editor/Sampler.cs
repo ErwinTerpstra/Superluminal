@@ -50,7 +50,7 @@ namespace Superluminal
 			float x = uv.x * (width - 1);
 			float y = uv.y * (height - 1);
 
-			return GetPixel(FloatMath.RoundToInt(x), FloatMath.RoundToInt(y));
+			return GetPixel(FastMath.RoundToInt(x), FastMath.RoundToInt(y));
 		}
 
 		public Color SampleBilinear(Vector2 uv)

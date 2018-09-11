@@ -65,7 +65,7 @@ namespace Superluminal
 			else
 				indirect = Color.black;
 
-			shadingInfo.color = (ambient + direct + indirect) * diffuse / FloatMath.PI;
+			shadingInfo.color = (ambient + direct + indirect) * diffuse / FastMath.PI;
 		}
 
 		public Color SampleSkybox(Vector3 direction)
@@ -83,7 +83,7 @@ namespace Superluminal
 			switch (RenderSettings.ambientMode)
 			{
 				case UnityEngine.Rendering.AmbientMode.Flat:
-					return RenderSettings.ambientLight * FloatMath.INV_PI;
+					return RenderSettings.ambientLight * FastMath.INV_PI;
 
 				default:
 					return Color.black;

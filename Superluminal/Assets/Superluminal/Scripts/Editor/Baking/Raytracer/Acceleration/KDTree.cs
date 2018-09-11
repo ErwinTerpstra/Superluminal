@@ -128,7 +128,7 @@ namespace Superluminal
 
 			// Somehow, if we use std::min(maxDistance, tMax) as max distance, this sometimes misses intersection.
 			// TODO: Test why this is.;
-			return IntersectRay(ref ray, ref hitInfo, FloatMath.Max(0.0f, tMin), maxDistance);
+			return IntersectRay(ref ray, ref hitInfo, FastMath.Max(0.0f, tMin), maxDistance);
 		}
 
 		private bool IntersectRayRec(ref Ray ray, ref RaycastHit hitInfo, KDTreeNode node)

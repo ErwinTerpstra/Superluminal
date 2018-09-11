@@ -14,6 +14,10 @@ namespace Superluminal
 		public float minimumErrorFactor = 0.8f;
 
 		public float maxVertexDensity = 10.0f;
+
+		public float maxVertexFactor = 10.0f;
+
+		public int maxExtraVertices = 1000;
 		
 		public int edgeOptimizeSteps = 20;
 	}

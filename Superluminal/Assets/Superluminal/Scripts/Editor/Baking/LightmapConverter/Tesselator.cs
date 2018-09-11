@@ -58,6 +58,12 @@ namespace Superluminal
 			float totalArea = CalculateTotalMeshArea();
 			int maxVertexCount = (int) (totalArea * settings.maxVertexDensity);
 
+			if (settings.maxExtraVertices >= 0)
+				maxVertexCount = FastMath.Min(maxVertexCount, meshEditor.vertices.Count + settings.maxExtraVertices);
+
+			if (settings.maxVertexFactor >= 0)
+				maxVertexCount = FastMath.Min(maxVertexCount, (int) (meshEditor.vertices.Count * settings.maxVertexFactor));
+
 			Queue<TesselationCandidate> candidateQueue = new Queue<TesselationCandidate>();
 
 			while (true)
@@ -503,7 +509,7 @@ namespace Superluminal
 		{
 			candidates.Sort((a, b) =>
 			{
-				return FloatMath.Sign(a.error - b.error);
+				return FastMath.Sign(a.error - b.error);
 			});
 		}
 
@@ -552,11 +558,37 @@ namespace Superluminal
 
 			// Decode RGBMA lightmap
 			// TODO: automatically detect from player settings if this should be performed ("normal quality" lightmaps)
-			//lightmapColor.r = lightmapColor.r * 8.0f * lightmapColor.a;
-			//lightmapColor.g = lightmapColor.g * 8.0f * lightmapColor.a;
-			//lightmapColor.b = lightmapColor.b * 8.0f * lightmapColor.a;
+			// This does not seem to be exposed via the API at the moment
+			if (!IsHDR(lightmapSampler.Texture.format))
+			{
+				lightmapColor.r = lightmapColor.r * 8.0f * lightmapColor.a;
+				lightmapColor.g = lightmapColor.g * 8.0f * lightmapColor.a;
+				lightmapColor.b = lightmapColor.b * 8.0f * lightmapColor.a;
+			}
 
 			return lightmapColor;
+		}
+
+		private bool IsHDR(TextureFormat format)
+		{
+			switch (format)
+			{
+				case TextureFormat.BC6H:
+
+				case TextureFormat.RFloat:
+				case TextureFormat.RGFloat:
+				case TextureFormat.RGB9e5Float:
+				case TextureFormat.RGBAFloat:
+
+				case TextureFormat.RHalf:
+				case TextureFormat.RGHalf:
+				case TextureFormat.RGBAHalf:
+					return true;
+
+				default:
+					return false;
+
+			}
 		}
 
 		private float CalculateError(Edge edge, float t)
@@ -589,7 +621,7 @@ namespace Superluminal
 			Color interpolatedColor = Color.Lerp(c0, c1, t);
 
 			// Calculate the error as the difference between the interpolated color and the desired color
-			return FloatMath.Abs(CalculateColorIntensity(desiredColor) - CalculateColorIntensity(interpolatedColor));
+			return FastMath.Abs(CalculateColorIntensity(desiredColor) - CalculateColorIntensity(interpolatedColor));
 		}
 
 		private float CalculateTotalMeshArea()
@@ -651,7 +683,7 @@ namespace Superluminal
 			if (a2 <= 0.0f)
 				return 0.0f;
 
-			return FloatMath.Sqrt(a2);
+			return FastMath.Sqrt(a2);
 		}
 
 		private static void Sort(ref int a, ref int b)

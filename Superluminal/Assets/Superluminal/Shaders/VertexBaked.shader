@@ -31,7 +31,7 @@
 			{
 				float4 vertex : SV_POSITION;
 				float2 uv : TEXCOORD0;
-				float4 irradiance : TEXCOORD1;
+				float4 irradiance : TEXCOORD2;
 
 				UNITY_FOG_COORDS(1)
 			};

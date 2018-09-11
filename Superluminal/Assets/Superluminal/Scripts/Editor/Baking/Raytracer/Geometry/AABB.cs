@@ -24,13 +24,13 @@ namespace Superluminal
 		/// <param name="point"></param>
 		public void Encapsulate(Vector3 point)
 		{
-			min.x = FloatMath.Min(min.x, point.x);
-			min.y = FloatMath.Min(min.y, point.y);
-			min.z = FloatMath.Min(min.z, point.z);
+			min.x = FastMath.Min(min.x, point.x);
+			min.y = FastMath.Min(min.y, point.y);
+			min.z = FastMath.Min(min.z, point.z);
 
-			max.x = FloatMath.Max(max.x, point.x);
-			max.y = FloatMath.Max(max.y, point.y);
-			max.z = FloatMath.Max(max.z, point.z);
+			max.x = FastMath.Max(max.x, point.x);
+			max.y = FastMath.Max(max.y, point.y);
+			max.z = FastMath.Max(max.z, point.z);
 		}
 
 		/// <summary>
@@ -54,11 +54,11 @@ namespace Superluminal
 				float cMin = (min[axis] - ray.Origin[axis]) * ray.InvDirection[axis];
 				float cMax = (max[axis] - ray.Origin[axis]) * ray.InvDirection[axis];
 				
-				tMin = FloatMath.Max(tMin, FloatMath.Min(cMin, cMax));
-				tMax = FloatMath.Min(tMax, FloatMath.Max(cMin, cMax));
+				tMin = FastMath.Max(tMin, FastMath.Min(cMin, cMax));
+				tMax = FastMath.Min(tMax, FastMath.Max(cMin, cMax));
 			}
 
-			return tMax >= FloatMath.Max(tMin, 0.0f);
+			return tMax >= FastMath.Max(tMin, 0.0f);
 		}
 
 		public Vector3 Center
