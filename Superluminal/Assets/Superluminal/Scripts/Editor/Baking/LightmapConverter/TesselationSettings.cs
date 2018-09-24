@@ -8,6 +8,8 @@ namespace Superluminal
 	{
 		public float minimumError = 0.05f;
 
+		public bool tesselate = false;
+
 		public bool allowRecursiveSplitting = true;
 
 		[Range(0.0f, 1.0f)]

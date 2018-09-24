@@ -13,7 +13,7 @@ namespace Superluminal
 		{
 			BakeData bakeData = Object.FindObjectOfType<BakeData>();
 
-			if (bakeData == null)
+			if (bakeData == null || !bakeData.applyWhenBuilding)
 				return;
 
 			HashSet<GameObject> rootObjects = new HashSet<GameObject>();

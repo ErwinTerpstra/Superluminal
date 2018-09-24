@@ -7,8 +7,6 @@ namespace Superluminal
 {
 	public class Tesselator
 	{
-
-		private const float ldrMultiplier = 1.0f;
 		private const float gammaToLinear = 2.2f;
 		private const float linearToGamma = 1.0f / gammaToLinear;
 
@@ -53,8 +51,6 @@ namespace Superluminal
 
 		public void Tesselate()
 		{
-			AddCandidatesForAllEdges();
-
 			float totalArea = CalculateTotalMeshArea();
 			int maxVertexCount = (int) (totalArea * settings.maxVertexDensity);
 
@@ -64,7 +60,12 @@ namespace Superluminal
 			if (settings.maxVertexFactor >= 0)
 				maxVertexCount = FastMath.Min(maxVertexCount, (int) (meshEditor.vertices.Count * settings.maxVertexFactor));
 
+			if (maxVertexCount <= meshEditor.vertices.Count)
+				return;
+
 			Queue<TesselationCandidate> candidateQueue = new Queue<TesselationCandidate>();
+
+			AddCandidatesForAllEdges();
 
 			while (true)
 			{
@@ -515,26 +516,15 @@ namespace Superluminal
 
 		private Color EncodeVertexColor(Color color)
 		{
-			// Convert color to LDR range
-			color.r = Mathf.Min(color.r / ldrMultiplier, 1.0f);
-			color.g = Mathf.Min(color.g / ldrMultiplier, 1.0f);
-			color.b = Mathf.Min(color.b / ldrMultiplier, 1.0f);
-
-			// When rendering in linear mode, Unity expects vertex colors in gamma space and automatically converts them to linear colors
-			if (PlayerSettings.colorSpace == ColorSpace.Linear)
-				color = color.gamma;
+			// Unity expects vertex colors in gamma space and automatically converts them to linear colors in linear mode
+			color = color.gamma;
 
 			return color;
 		}
 
 		private Color DecodeVertexColor(Color color)
 		{
-			if (PlayerSettings.colorSpace == ColorSpace.Linear)
-				color = color.linear;
-			
-			color.r *= ldrMultiplier;
-			color.g *= ldrMultiplier;
-			color.b *= ldrMultiplier;
+			color = color.linear;
 
 			return color;
 		}
@@ -553,18 +543,23 @@ namespace Superluminal
 			string lightmapAssetPath = AssetDatabase.GetAssetPath(lightmapSampler.Texture);
 			TextureImporter lightmapImporter = AssetImporter.GetAtPath(lightmapAssetPath) as TextureImporter;
 
-			if (lightmapImporter.sRGBTexture)
-				lightmapColor = lightmapColor.linear;
+#if UNITY_ANDROID || UNITY_IOS
+			if (PlayerSettings.colorSpace == ColorSpace.Gamma)
+				lightmapColor *= 2;
+			else
+				lightmapColor *= 4.59482f;
+#else
 
 			// Decode RGBMA lightmap
-			// TODO: automatically detect from player settings if this should be performed ("normal quality" lightmaps)
-			// This does not seem to be exposed via the API at the moment
 			if (!IsHDR(lightmapSampler.Texture.format))
 			{
 				lightmapColor.r = lightmapColor.r * 8.0f * lightmapColor.a;
 				lightmapColor.g = lightmapColor.g * 8.0f * lightmapColor.a;
 				lightmapColor.b = lightmapColor.b * 8.0f * lightmapColor.a;
 			}
+#endif
+			
+			lightmapColor = lightmapColor.linear;
 
 			return lightmapColor;
 		}

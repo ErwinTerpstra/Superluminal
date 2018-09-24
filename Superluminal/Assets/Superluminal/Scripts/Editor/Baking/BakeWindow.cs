@@ -17,16 +17,12 @@ namespace Superluminal
 			SHADED_WIREFRAME,
 		}
 
-		[SerializeField]
 		private bool drawKDTree;
 
-		[SerializeField]
 		private bool previewEnabled;
 
-		[SerializeField]
 		private PreviewMode previewMode;
 
-		[SerializeField]
 		private BakeSettings bakeSettings;
 
 		private Lightbaker baker;
@@ -39,7 +35,8 @@ namespace Superluminal
 
 		private void OnEnable()
 		{
-			bakeSettings = CreateInstance<BakeSettings>();
+			if (bakeSettings == null)
+				bakeSettings = CreateInstance<BakeSettings>();
 
 			dispatcher = new BakeDispatcher();
 
@@ -81,7 +78,10 @@ namespace Superluminal
 #endif
 
 			wireframeRenderer.Dispose();
+		}
 
+		private void OnDestroy()
+		{
 			DestroyImmediate(bakeSettings);
 			bakeSettings = null;
 		}

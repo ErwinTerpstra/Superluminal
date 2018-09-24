@@ -11,6 +11,8 @@ namespace Superluminal
 		public static event BakeDataEvent Loaded;
 		public static event BakeDataEvent Unloaded;
 
+		public bool applyWhenBuilding = true;
+
 		public BakeTarget[] targets = new BakeTarget[0];
 
 		private void OnEnable()

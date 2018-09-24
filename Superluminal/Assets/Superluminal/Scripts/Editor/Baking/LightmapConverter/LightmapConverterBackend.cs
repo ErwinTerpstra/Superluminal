@@ -80,7 +80,10 @@ namespace Superluminal
 
 			Tesselator tesselator = new Tesselator(target, lightmapSampler, settings.tesselationSettings);
 			tesselator.BakeVertexColors();
-			tesselator.Tesselate();
+
+			if (settings.tesselationSettings.tesselate)
+				tesselator.Tesselate();
+
 			tesselator.StoreMesh();
 		}
 		
