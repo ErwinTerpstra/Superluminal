@@ -27,6 +27,6 @@ namespace Superluminal
 			}
 		}
 
-		public abstract void Bake(BakeTarget target);
+		public abstract IEnumerator<BakeCommand> Bake(BakeTarget target);
 	}
 }

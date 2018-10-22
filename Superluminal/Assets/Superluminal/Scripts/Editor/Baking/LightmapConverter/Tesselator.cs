@@ -14,12 +14,16 @@ namespace Superluminal
 
 		private Sampler lightmapSampler;
 
+		private TextureImporter lightmapImporter;
+
 		private TesselationSettings settings;
 
 		private MeshEditor meshEditor;
 		
 		private List<TesselationCandidate> candidates;
-		
+
+		private Dictionary<Edge, TesselationCandidate> candidateLookupTable;
+
 		private PRNG rng;
 
 		public Tesselator(BakeTarget target, Sampler lightmapSampler, TesselationSettings settings)
@@ -27,12 +31,16 @@ namespace Superluminal
 			this.target = target;
 			this.lightmapSampler = lightmapSampler;
 			this.settings = settings;
+			
+			string lightmapAssetPath = AssetDatabase.GetAssetPath(lightmapSampler.Texture);
+			lightmapImporter = AssetImporter.GetAtPath(lightmapAssetPath) as TextureImporter;
 
 			//Unwrapping.GenerateSecondaryUVSet(target.bakedMesh);
 
 			meshEditor = new MeshEditor(target.bakedMesh);
 
 			candidates = new List<TesselationCandidate>();
+			candidateLookupTable = new Dictionary<Edge, TesselationCandidate>();
 
 			rng = new PRNG();
 		}
@@ -49,7 +57,7 @@ namespace Superluminal
 			}
 		}
 
-		public void Tesselate()
+		public IEnumerator<BakeCommand> Tesselate()
 		{
 			float totalArea = CalculateTotalMeshArea();
 			int maxVertexCount = (int) (totalArea * settings.maxVertexDensity);
@@ -61,7 +69,7 @@ namespace Superluminal
 				maxVertexCount = FastMath.Min(maxVertexCount, (int) (meshEditor.vertices.Count * settings.maxVertexFactor));
 
 			if (maxVertexCount <= meshEditor.vertices.Count)
-				return;
+				yield break;
 
 			Queue<TesselationCandidate> candidateQueue = new Queue<TesselationCandidate>();
 
@@ -77,7 +85,7 @@ namespace Superluminal
 					if (!withinVertexLimit)
 						break;
 
-					SortCandidates();
+					//SortCandidates();
 
 					TesselationCandidate bestCandidate = candidates[candidates.Count - 1];
 					
@@ -94,6 +102,8 @@ namespace Superluminal
 
 				// Tesselate the mesh with this candidate
 				SplitTrianglesUsingCandidate(candidate, settings.allowRecursiveSplitting && withinVertexLimit, candidateQueue);
+
+				yield return null;
 			}
 		}
 
@@ -388,7 +398,7 @@ namespace Superluminal
 				}
 			}
 
-			SortCandidates();			
+			//SortCandidates();			
 		}
 
 		private void AddCandidate(int index0, int index1)
@@ -400,9 +410,29 @@ namespace Superluminal
 				return;
 
 			candidate = new TesselationCandidate(edge);
-			candidates.Add(candidate);
+
+			candidateLookupTable.Add(edge, candidate);
 
 			OptimizeCandidate(candidate);
+			InsertCandidate(candidate);
+		}
+
+		private void InsertCandidate(TesselationCandidate candidate)
+		{
+			int min = 0, max = FastMath.Max(candidates.Count - 1, 0);
+			int mid;
+
+			while (min != max)
+			{
+				mid = (max + min) / 2;
+
+				if (candidate.error > candidates[mid].error)
+					min = mid + 1;
+				else
+					max = mid;
+			}
+
+			candidates.Insert(min, candidate);
 		}
 
 		private void OptimizeCandidate(TesselationCandidate candidate)
@@ -463,11 +493,9 @@ namespace Superluminal
 
 		private TesselationCandidate FindCandidate(Edge edge)
 		{
-			foreach (TesselationCandidate candidate in candidates)
-			{
-				if (candidate.edge == edge)
-					return candidate;
-			}
+			TesselationCandidate candidate;
+			if (candidateLookupTable.TryGetValue(edge, out candidate))
+				return candidate;
 
 			return null;
 		}
@@ -539,9 +567,6 @@ namespace Superluminal
 			lightmapUV.y = (scaleOffset.y * lightmapUV.y + scaleOffset.w);
 			
 			Color lightmapColor = lightmapSampler.SampleBilinear(lightmapUV);
-
-			string lightmapAssetPath = AssetDatabase.GetAssetPath(lightmapSampler.Texture);
-			TextureImporter lightmapImporter = AssetImporter.GetAtPath(lightmapAssetPath) as TextureImporter;
 
 #if UNITY_ANDROID || UNITY_IOS
 			if (PlayerSettings.colorSpace == ColorSpace.Gamma)

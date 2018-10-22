@@ -88,7 +88,9 @@ namespace Superluminal
 				}
 
 				// Bake the new mesh
-				backend.Bake(pair.Value);
+				var bakeEnumerator = backend.Bake(pair.Value);
+				while (bakeEnumerator.MoveNext())
+					yield return bakeEnumerator.Current;
 
 				// Store the new baked mesh
 				bakedAssetRepository.StoreMesh(pair.Value.bakedMesh, pair.Value.guid);

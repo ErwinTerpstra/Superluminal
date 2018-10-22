@@ -79,7 +79,7 @@ namespace Superluminal
 			}
 		}
 
-		public override void Bake(BakeTarget target)
+		public override IEnumerator<BakeCommand> Bake(BakeTarget target)
 		{
 			Vector3[] vertices = target.originalMesh.vertices;
 			Vector3[] normals = target.originalMesh.normals;
@@ -108,6 +108,8 @@ namespace Superluminal
 
 				Color irradiance = raytracer.Integrate(position, normal, settings.raytracingSettings.bounces, settings.raytracingSettings.indirectSamples);
 				colors[vertexIdx] = irradiance;
+
+				yield return null;
 			}
 
 			// Store the generated colors

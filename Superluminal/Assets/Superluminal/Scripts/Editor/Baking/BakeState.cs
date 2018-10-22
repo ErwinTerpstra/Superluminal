@@ -22,6 +22,11 @@ namespace Superluminal
 		{
 			step = BakeStep.INITIALIZING;
 		}
+
+		public TimeSpan Duration
+		{
+			get { return bakingEnd.Value - bakingStart.Value; }
+		}
 	}
 
 	public enum BakeStep

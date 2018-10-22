@@ -35,7 +35,7 @@ namespace Superluminal
 
 		private void OnEnable()
 		{
-			if (bakeSettings == null)
+			if (!bakeSettings)
 				bakeSettings = CreateInstance<BakeSettings>();
 
 			dispatcher = new BakeDispatcher();
@@ -89,10 +89,7 @@ namespace Superluminal
 		private void Update()
 		{
 			if (dispatcher.UpdateForeground())
-			{
-				SceneView.RepaintAll();
 				Repaint();
-			}
 		}
 
 		private void OnGUI()
@@ -212,8 +209,12 @@ namespace Superluminal
 							break;
 
 						case BakeStep.CANCELLED:
+							progress = 1.0f;
+							break;
+
 						case BakeStep.FINISHED:
 							progress = 1.0f;
+							label += string.Format(" IN {0:0}ms", state.Duration.TotalMilliseconds);
 							break;
 					}
 

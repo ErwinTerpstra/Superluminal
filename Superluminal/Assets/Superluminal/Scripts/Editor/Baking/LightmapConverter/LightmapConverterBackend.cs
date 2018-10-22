@@ -42,7 +42,7 @@ namespace Superluminal
 			}
 		}
 		
-		public override void Bake(BakeTarget target)
+		public override IEnumerator<BakeCommand> Bake(BakeTarget target)
 		{
 			// Copy vertex attributes from the original mesh
 			Vector3[] vertices = target.originalMesh.vertices;
@@ -66,14 +66,14 @@ namespace Superluminal
 			if (bakedMesh.uv.Length == 0 && bakedMesh.uv2.Length == 0)
 			{
 				Debug.LogError("Skipping mesh because it has no lightmap UVs", target.originalMesh);
-				return;
+				yield break;
 			}
 
 			// Check if the target renderer has a valid lightmap
 			if (target.renderer.lightmapIndex == -1 || target.renderer.lightmapIndex >= 0xFFFE)
 			{
 				Debug.LogWarning("Attempt to bake renderer with invalid lightmap index!", target.renderer);
-				return;
+				yield break;
 			}
 			
 			Sampler lightmapSampler = lightmapSamplers[target.renderer.lightmapIndex];
@@ -82,7 +82,12 @@ namespace Superluminal
 			tesselator.BakeVertexColors();
 
 			if (settings.tesselationSettings.tesselate)
-				tesselator.Tesselate();
+			{
+				var tesselationRoutine = tesselator.Tesselate();
+
+				while (tesselationRoutine.MoveNext())
+					yield return tesselationRoutine.Current;
+			}
 
 			tesselator.StoreMesh();
 		}

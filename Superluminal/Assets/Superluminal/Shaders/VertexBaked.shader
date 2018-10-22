@@ -14,6 +14,8 @@
 		Tags { "RenderType"="Opaque" }
 		LOD 100
 
+		Blend One OneMinusSrcAlpha
+
 		Pass
 		{
 			CGPROGRAM
@@ -54,7 +56,33 @@
 
 			half _Glossiness;
 			half _Metallic;
-						
+			
+			UnityGIInput SetupGIInput(UnityLight light, float3 worldPos, half3 viewDir)
+			{
+				UnityGIInput d;
+				UNITY_INITIALIZE_OUTPUT(UnityGIInput, d);
+
+				d.light = light;
+				d.worldPos = worldPos;
+				d.worldViewDir = viewDir;
+
+				d.probeHDR[0] = unity_SpecCube0_HDR;
+				d.probeHDR[1] = unity_SpecCube1_HDR;
+
+#if defined(UNITY_SPECCUBE_BLENDING) || defined(UNITY_SPECCUBE_BOX_PROJECTION)
+				d.boxMin[0] = unity_SpecCube0_BoxMin; // .w holds lerp value for blending
+#endif
+#ifdef UNITY_SPECCUBE_BOX_PROJECTION
+				d.boxMax[0] = unity_SpecCube0_BoxMax;
+				d.probePosition[0] = unity_SpecCube0_ProbePosition;
+				d.boxMax[1] = unity_SpecCube1_BoxMax;
+				d.boxMin[1] = unity_SpecCube1_BoxMin;
+				d.probePosition[1] = unity_SpecCube1_ProbePosition;
+#endif
+
+				return d;
+			}
+
 			v2f vert (appdata v)
 			{
 				v2f o;
@@ -77,40 +105,45 @@
 			{
 				fixed4 color = tex2D(_MainTex, i.uv) * _Color;
 			
-				half3 specColor;
-				half oneMinusReflectivity;
-
 				// Setup surface shader output
 				SurfaceOutputStandard s;
-				s.Albedo = DiffuseAndSpecularFromMetallic(color.rgb, _Metallic, specColor, oneMinusReflectivity);
+				s.Albedo = color.rgb;
 				s.Normal = normalize(i.normal);
 				s.Emission = _EmissionColor;
 				s.Metallic = _Metallic;
 				s.Smoothness = _Glossiness;
 				s.Occlusion = 1.0;
 				s.Alpha = color.a;
-	
+
+				// Setup main light
+				UnityLight mainLight;
+				mainLight.color = _LightColor0.rgb;
+				mainLight.dir = _WorldSpaceLightPos0.xyz;
+
 				// Setup GI input
-				UnityGIInput d;
-				UNITY_INITIALIZE_OUTPUT(UnityGIInput, d);
-
-				d.worldPos = i.worldPos;
-				d.worldViewDir = i.viewDir;
-
-				d.probeHDR[0] = unity_SpecCube0_HDR;
-				d.probeHDR[1] = unity_SpecCube1_HDR;
+				UnityGIInput giInput = SetupGIInput(mainLight, i.worldPos, i.viewDir);
 
 				// Setup glossy environment for GI
-				Unity_GlossyEnvironmentData glossEnv = UnityGlossyEnvironmentSetup(s.Smoothness, i.viewDir, normalize(i.worldNormal), specColor);
+				
+				// Specular color is not used by UnityGlossyEnvironmentSetup, so we don't need to calculate it
+				/*
+				half3 specColor;
+				half oneMinusReflectivity;
+				DiffuseAndSpecularFromMetallic(color.rgb, _Metallic, specColor, oneMinusReflectivity);
+				Unity_GlossyEnvironmentData glossEnv = UnityGlossyEnvironmentSetup(s.Smoothness, i.viewDir, i.worldNormal, specColor);
+				*/
+
+				Unity_GlossyEnvironmentData glossEnv = UnityGlossyEnvironmentSetup(s.Smoothness, i.viewDir, i.worldNormal, float3(0, 0, 0));
 
 				// Setup GI output data
-				UnityGI gi;
-				UNITY_INITIALIZE_OUTPUT(UnityGI, gi);
+				UnityGI giOutput;
+				UNITY_INITIALIZE_OUTPUT(UnityGI, giOutput);
 
-				gi.indirect.diffuse = i.indirectDiffuse;
-				gi.indirect.specular = UnityGI_IndirectSpecular(d, s.Occlusion, glossEnv);
+				giOutput.light = mainLight;
+				giOutput.indirect.diffuse = i.indirectDiffuse;
+				giOutput.indirect.specular = UnityGI_IndirectSpecular(giInput, s.Occlusion * 0.5, glossEnv);
 
-				half4 output = LightingStandard(s, i.viewDir, gi);
+				half4 output = LightingStandard(s, i.viewDir, giOutput);
 				output.rgb += _EmissionColor;
 
 				// Apply fog
